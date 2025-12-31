@@ -4,7 +4,8 @@ An Obsidian plugin for [Taskdn](https://github.com/dannysmith/taskdn), a task ma
 
 Taskdn's data lives as plain files on disk (so you can use Obsidian, VS Code, or AI tools to work with it). Taskdn includes a Desktop app, CLI tool (with a special `--ai` mode for LLMs), a Claude Code plugin and an Obsidian plugin. This is the Obsidian plugin.
 
-<!-- Screenshots go here -->
+<img width="641" height="120" alt="obsidian-tdn-example" src="https://github.com/user-attachments/assets/c9328012-fcb0-4956-80a0-9cbb0d9e53e1" />
+
 
 ## Installation
 
