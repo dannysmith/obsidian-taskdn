@@ -142,7 +142,7 @@ export default class TaskdnPlugin extends Plugin {
     if (!text) return;
 
     // Generate unique filename
-    const filename = await this.generateUniqueFilename(text);
+    const filename = this.generateUniqueFilename(text);
     const filePath = `${this.settings.tasksDirectory}/${filename}`;
 
     // Determine status
@@ -174,13 +174,14 @@ updated-at: ${today}`;
   /**
    * Generate a unique filename for a task
    */
-  private async generateUniqueFilename(text: string): Promise<string> {
+  private generateUniqueFilename(text: string): string {
     const base = sanitizeFilename(text);
     let filename = `${base}.md`;
     let counter = 1;
     const dir = this.settings.tasksDirectory;
 
-    while (await this.app.vault.adapter.exists(`${dir}/${filename}`)) {
+    // Use Vault API instead of adapter.exists()
+    while (this.app.vault.getAbstractFileByPath(`${dir}/${filename}`)) {
       filename = `${base}-${counter}.md`;
       counter++;
     }
