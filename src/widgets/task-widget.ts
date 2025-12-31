@@ -35,22 +35,24 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
     "aria-label",
     `Mark "${taskData.title}" as ${isDoneStatus(taskData.status) ? "incomplete" : "complete"}`
   );
-  checkbox.addEventListener("click", async (e) => {
+  checkbox.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
 
-    try {
-      const newStatus = await toggleTaskStatus(file, app);
-      checkbox.checked = isDoneStatus(newStatus);
-      container.dataset.status = newStatus;
-      checkbox.setAttribute(
-        "aria-label",
-        `Mark "${taskData.title}" as ${isDoneStatus(newStatus) ? "incomplete" : "complete"}`
-      );
-    } catch (err) {
-      checkbox.checked = isDoneStatus(taskData.status);
-      console.error("Taskdn: Failed to toggle task status:", err);
-    }
+    void (async () => {
+      try {
+        const newStatus = await toggleTaskStatus(file, app);
+        checkbox.checked = isDoneStatus(newStatus);
+        container.dataset.status = newStatus;
+        checkbox.setAttribute(
+          "aria-label",
+          `Mark "${taskData.title}" as ${isDoneStatus(newStatus) ? "incomplete" : "complete"}`
+        );
+      } catch (err) {
+        checkbox.checked = isDoneStatus(taskData.status);
+        console.error("Taskdn: Failed to toggle task status:", err);
+      }
+    })();
   });
   container.appendChild(checkbox);
 
@@ -66,16 +68,16 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
     await leaf.openFile(file);
   };
 
-  title.addEventListener("click", async (e) => {
+  title.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    await openFile();
+    void openFile();
   });
-  title.addEventListener("keydown", async (e) => {
+  title.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       e.stopPropagation();
-      await openFile();
+      void openFile();
     }
   });
   container.appendChild(title);
@@ -143,16 +145,16 @@ function createMetaLink(
     }
   };
 
-  el.addEventListener("click", async (e) => {
+  el.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    await openLink();
+    void openLink();
   });
-  el.addEventListener("keydown", async (e) => {
+  el.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       e.stopPropagation();
-      await openLink();
+      void openLink();
     }
   });
   return el;

@@ -37,9 +37,11 @@ export default class TaskdnPlugin extends Plugin {
         if (isChecklistLine(line)) {
           menu.addItem((item) => {
             item
-              .setTitle("Convert to Taskdn task")
+              .setTitle("Convert to task")
               .setIcon("check-square")
-              .onClick(() => this.convertChecklistToTask(editor, cursor.line));
+              .onClick(() => {
+                void this.convertChecklistToTask(editor, cursor.line);
+              });
           });
         }
       })
@@ -47,7 +49,7 @@ export default class TaskdnPlugin extends Plugin {
 
     this.addCommand({
       id: "convert-checklist-to-task",
-      name: "Convert checklist item to Taskdn task",
+      name: "Convert checklist item to task",
       editorCheckCallback: (checking, editor) => {
         const cursor = editor.getCursor();
         const line = editor.getLine(cursor.line);
@@ -55,7 +57,7 @@ export default class TaskdnPlugin extends Plugin {
         if (!isChecklistLine(line)) return false;
         if (checking) return true;
 
-        this.convertChecklistToTask(editor, cursor.line);
+        void this.convertChecklistToTask(editor, cursor.line);
         return true;
       },
     });
