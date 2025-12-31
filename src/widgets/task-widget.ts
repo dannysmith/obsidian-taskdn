@@ -104,6 +104,14 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
     meta.appendChild(areaEl);
   }
 
+  if (taskData.deferUntil) {
+    const deferEl = document.createElement("span");
+    deferEl.className = "taskdn-defer";
+    deferEl.textContent = formatDateForDisplay(taskData.deferUntil);
+    deferEl.setAttribute("aria-label", `Deferred until: ${taskData.deferUntil}`);
+    meta.appendChild(deferEl);
+  }
+
   if (taskData.due) {
     const dueEl = document.createElement("span");
     dueEl.className = "taskdn-due";
@@ -188,8 +196,35 @@ export function updateTaskWidget(
     title.setAttribute("aria-label", `Open task: ${taskData.title}`);
   }
 
-  const existingDue = widget.querySelector<HTMLElement>(".taskdn-due");
   const meta = widget.querySelector<HTMLElement>(".taskdn-meta");
+  const existingDefer = widget.querySelector<HTMLElement>(".taskdn-defer");
+  const existingDue = widget.querySelector<HTMLElement>(".taskdn-due");
+
+  if (taskData.deferUntil) {
+    if (existingDefer) {
+      existingDefer.textContent = formatDateForDisplay(taskData.deferUntil);
+      existingDefer.setAttribute(
+        "aria-label",
+        `Deferred until: ${taskData.deferUntil}`
+      );
+    } else if (meta) {
+      const deferEl = document.createElement("span");
+      deferEl.className = "taskdn-defer";
+      deferEl.textContent = formatDateForDisplay(taskData.deferUntil);
+      deferEl.setAttribute(
+        "aria-label",
+        `Deferred until: ${taskData.deferUntil}`
+      );
+      // Insert before due date if it exists
+      if (existingDue) {
+        meta.insertBefore(deferEl, existingDue);
+      } else {
+        meta.appendChild(deferEl);
+      }
+    }
+  } else if (existingDefer) {
+    existingDefer.remove();
+  }
 
   if (taskData.due) {
     if (existingDue) {

@@ -93,6 +93,15 @@ class TaskLinkWidget extends WidgetType {
 /**
  * Build decorations for task wikilinks
  */
+/**
+ * Collected decoration info for sorting before adding to builder
+ */
+interface DecorationInfo {
+  from: number;
+  to: number;
+  decoration: Decoration;
+}
+
 function buildDecorations(
   view: EditorView,
   plugin: TaskdnPlugin
@@ -110,6 +119,10 @@ function buildDecorations(
   const sourcePath = editorInfo?.file?.path ?? "";
   const cursorPos = state.selection.main.head;
   const tree = syntaxTree(state);
+
+  // Collect all decorations first (line decorations + widget decorations)
+  const decorations: DecorationInfo[] = [];
+  const taskLineStarts = new Set<number>(); // Track lines we've already added class to
 
   for (const { from, to } of view.visibleRanges) {
     tree.iterate({
@@ -145,14 +158,34 @@ function buildDecorations(
           const cache = plugin.app.metadataCache.getFileCache(taskFile);
           const taskData = getTaskDataFromCache(taskFile, cache);
 
-          const decoration = Decoration.replace({
-            widget: new TaskLinkWidget(plugin, taskFile, taskData, view),
-          });
+          // Add line decoration to make line behave like native task line
+          const lineStart = state.doc.lineAt(linkStart).from;
+          if (!taskLineStarts.has(lineStart)) {
+            taskLineStarts.add(lineStart);
+            decorations.push({
+              from: lineStart,
+              to: lineStart,
+              decoration: Decoration.line({ class: "HyperMD-task-line" }),
+            });
+          }
 
-          builder.add(linkStart, linkEnd, decoration);
+          // Add widget decoration
+          decorations.push({
+            from: linkStart,
+            to: linkEnd,
+            decoration: Decoration.replace({
+              widget: new TaskLinkWidget(plugin, taskFile, taskData, view),
+            }),
+          });
         }
       },
     });
+  }
+
+  // Sort by position and add to builder (RangeSetBuilder requires sorted order)
+  decorations.sort((a, b) => a.from - b.from || a.to - b.to);
+  for (const { from, to, decoration } of decorations) {
+    builder.add(from, to, decoration);
   }
 
   return builder.finish();

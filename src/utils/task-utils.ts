@@ -132,37 +132,70 @@ export function formatDate(date: Date): string {
 }
 
 /**
- * Format a date for display (e.g., "Jan 31")
- * Parses YYYY-MM-DD format without timezone conversion issues
+ * Parse a YYYY-MM-DD date string to a Date object at noon local time
  */
-export function formatDateForDisplay(dateStr: string): string {
-  // Parse YYYY-MM-DD format directly to avoid timezone issues
+function parseDateString(dateStr: string): Date | null {
   const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (match) {
     const [, year, month, day] = match;
-    // Create date with local timezone (noon to avoid DST edge cases)
-    const date = new Date(
-      parseInt(year),
-      parseInt(month) - 1,
-      parseInt(day),
-      12
-    );
-    return date.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
+    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 12);
   }
-  // Fallback for other formats
   try {
     const date = new Date(dateStr);
-    if (isNaN(date.getTime())) return dateStr;
-    return date.toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    });
+    return isNaN(date.getTime()) ? null : date;
   } catch {
-    return dateStr;
+    return null;
   }
+}
+
+/**
+ * Get days difference between two dates (ignoring time)
+ */
+function getDaysDiff(date: Date, today: Date): number {
+  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const todayOnly = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate()
+  );
+  return Math.round(
+    (dateOnly.getTime() - todayOnly.getTime()) / (1000 * 60 * 60 * 24)
+  );
+}
+
+/**
+ * Format a date for display with plain English for nearby dates
+ * Returns "today", "tomorrow", "yesterday", "next Monday", "last Wednesday"
+ * for dates within a week, otherwise "Jan 31" format
+ */
+export function formatDateForDisplay(dateStr: string): string {
+  const date = parseDateString(dateStr);
+  if (!date) return dateStr;
+
+  const today = new Date();
+  const daysDiff = getDaysDiff(date, today);
+
+  if (daysDiff === 0) return "today";
+  if (daysDiff === 1) return "tomorrow";
+  if (daysDiff === -1) return "yesterday";
+
+  const dayName = date.toLocaleDateString(undefined, { weekday: "long" });
+
+  // Within next week (2-7 days ahead)
+  if (daysDiff >= 2 && daysDiff <= 7) {
+    return `next ${dayName}`;
+  }
+
+  // Within past week (2-7 days ago)
+  if (daysDiff >= -7 && daysDiff <= -2) {
+    return `last ${dayName}`;
+  }
+
+  // Default format for dates further away
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 /**

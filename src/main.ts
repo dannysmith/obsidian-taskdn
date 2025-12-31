@@ -10,6 +10,7 @@ import {
   sanitizeFilename,
   formatDate,
   escapeYamlString,
+  isDoneStatus,
 } from "./utils/task-utils";
 import { createTaskWidget, updateTaskWidget } from "./widgets/task-widget";
 import { taskLinkViewPlugin } from "./live-preview";
@@ -121,6 +122,23 @@ export default class TaskdnPlugin extends Plugin {
         file,
         taskData,
       });
+
+      // Make parent <li> behave like a native task-list-item
+      const parentLi = link.closest("li");
+      if (parentLi) {
+        parentLi.classList.add("task-list-item");
+        parentLi.dataset.task = isDoneStatus(taskData.status) ? "x" : " ";
+
+        // Extract checkbox to match native task-list-item structure exactly
+        // Native: <li class="task-list-item"><input class="task-list-item-checkbox">text</li>
+        const checkbox = widget.querySelector<HTMLInputElement>(".taskdn-checkbox");
+        if (checkbox) {
+          checkbox.classList.add("task-list-item-checkbox");
+          checkbox.remove();
+          link.replaceWith(checkbox, widget);
+          return;
+        }
+      }
 
       link.replaceWith(widget);
     });
