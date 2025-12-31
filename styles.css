@@ -133,3 +133,8 @@
 .markdown-preview-view li .taskdn-widget {
   vertical-align: middle;
 }
+
+/* Hide bullet point for list items containing taskdn widgets */
+.markdown-preview-view li:has(> .taskdn-widget) {
+  list-style-type: none;
+}

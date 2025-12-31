@@ -9,7 +9,7 @@ import {
 import { RangeSetBuilder, EditorState } from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNodeRef } from "@lezer/common";
-import { TFile, editorInfoField } from "obsidian";
+import { TFile, editorInfoField, editorLivePreviewField } from "obsidian";
 import type TaskdnPlugin from "./main";
 import { resolveTaskFile, getTaskDataFromCache } from "./utils/task-utils";
 import { createTaskWidget } from "./widgets/task-widget";
@@ -100,7 +100,13 @@ function buildDecorations(
   const builder = new RangeSetBuilder<Decoration>();
   const { state } = view;
 
-  const editorInfo = view.state.field(editorInfoField, false);
+  // Don't render widgets in Source mode - only in Live Preview
+  const isLivePreview = state.field(editorLivePreviewField, false);
+  if (!isLivePreview) {
+    return builder.finish();
+  }
+
+  const editorInfo = state.field(editorInfoField, false);
   const sourcePath = editorInfo?.file?.path ?? "";
   const cursorPos = state.selection.main.head;
   const tree = syntaxTree(state);
@@ -190,10 +196,19 @@ export function taskLinkViewPlugin(plugin: TaskdnPlugin) {
           return;
         }
 
+        // Check if live preview mode changed
+        const wasLivePreview = update.startState.field(
+          editorLivePreviewField,
+          false
+        );
+        const isLivePreview = update.state.field(editorLivePreviewField, false);
+        const modeChanged = wasLivePreview !== isLivePreview;
+
         if (
           update.docChanged ||
           update.viewportChanged ||
-          update.selectionSet
+          update.selectionSet ||
+          modeChanged
         ) {
           this.decorations = buildDecorations(update.view, plugin);
         }
