@@ -20,20 +20,15 @@ export default class TaskdnPlugin extends Plugin {
   async onload() {
     await this.loadSettings();
 
-    // Register settings tab
     this.addSettingTab(new TaskdnSettingTab(this.app, this));
-
-    // Register Live Preview extension (CM6)
     this.registerEditorExtension(taskLinkViewPlugin(this));
 
-    // Register Reading Mode post-processor
     this.registerMarkdownPostProcessor(
       (element: HTMLElement, context: MarkdownPostProcessorContext) => {
         this.processTaskLinks(element, context);
       }
     );
 
-    // Register context menu for checklist conversion
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {
         const cursor = editor.getCursor();
@@ -50,7 +45,6 @@ export default class TaskdnPlugin extends Plugin {
       })
     );
 
-    // Register command for checklist conversion
     this.addCommand({
       id: "convert-checklist-to-task",
       name: "Convert checklist item to Taskdn task",
@@ -66,7 +60,6 @@ export default class TaskdnPlugin extends Plugin {
       },
     });
 
-    // Listen for metadata changes to update widgets
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
         if (this.isTaskFile(file)) {
@@ -146,7 +139,6 @@ export default class TaskdnPlugin extends Plugin {
 
     if (!text) return;
 
-    // Ensure tasks directory exists
     const tasksDir = this.settings.tasksDirectory;
     if (!this.app.vault.getAbstractFileByPath(tasksDir)) {
       try {
@@ -157,15 +149,11 @@ export default class TaskdnPlugin extends Plugin {
       }
     }
 
-    // Generate unique filename
     const filename = this.generateUniqueFilename(text);
     const filePath = `${tasksDir}/${filename}`;
-
-    // Determine status
     const status = checked ? "done" : this.settings.defaultStatus;
     const today = formatDate(new Date());
 
-    // Create task content with proper YAML escaping
     let content = `---
 title: "${escapeYamlString(text)}"
 status: ${status}
@@ -178,7 +166,6 @@ updated-at: ${today}`;
 
     content += "\n---\n";
 
-    // Create the file - only modify the editor line if successful
     try {
       await this.app.vault.create(filePath, content);
     } catch (err) {
@@ -186,8 +173,6 @@ updated-at: ${today}`;
       return;
     }
 
-    // Replace checklist line with wikilink
-    // Use just the filename without extension for the wikilink
     const basename = filename.replace(/\.md$/, "");
     editor.setLine(lineNumber, `${indent}${listMarker} [[${basename}]]`);
   }
@@ -201,7 +186,6 @@ updated-at: ${today}`;
     let counter = 1;
     const dir = this.settings.tasksDirectory;
 
-    // Use Vault API instead of adapter.exists()
     while (this.app.vault.getAbstractFileByPath(`${dir}/${filename}`)) {
       filename = `${base}-${counter}.md`;
       counter++;
@@ -212,13 +196,11 @@ updated-at: ${today}`;
 
   /**
    * Refresh all widgets for a specific task file
-   * Called when the file's metadata changes
    */
   private refreshTaskWidgets(file: TFile) {
     const cache = this.app.metadataCache.getFileCache(file);
     const taskData = getTaskDataFromCache(file, cache);
 
-    // Find all widgets for this file and update them
     const widgets = document.querySelectorAll<HTMLElement>(
       `.taskdn-widget[data-file-path="${file.path}"]`
     );

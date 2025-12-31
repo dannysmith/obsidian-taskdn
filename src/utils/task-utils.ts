@@ -199,13 +199,12 @@ export function extractChecklistInfo(line: string): {
  */
 export function sanitizeFilename(text: string): string {
   const sanitized = text
-    .replace(/[\\/:*?"<>|]/g, "-") // Replace invalid chars
-    .replace(/\s+/g, "-") // Replace spaces with hyphens
-    .replace(/-+/g, "-") // Collapse multiple hyphens
-    .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
-    .slice(0, 100); // Limit length
+    .replace(/[\\/:*?"<>|]/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 100);
 
-  // Return default if sanitization results in empty string
   return sanitized || "untitled-task";
 }
 
@@ -222,9 +221,9 @@ export function extractWikilinkTarget(text: string): string | null {
  */
 export function escapeYamlString(text: string): string {
   return text
-    .replace(/\\/g, "\\\\") // Backslashes first
-    .replace(/"/g, '\\"') // Double quotes
-    .replace(/\n/g, "\\n") // Newlines
-    .replace(/\r/g, "\\r") // Carriage returns
-    .replace(/\t/g, "\\t"); // Tabs
+    .replace(/\\/g, "\\\\")
+    .replace(/"/g, '\\"')
+    .replace(/\n/g, "\\n")
+    .replace(/\r/g, "\\r")
+    .replace(/\t/g, "\\t");
 }

@@ -27,7 +27,6 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
   container.setAttribute("role", "group");
   container.setAttribute("aria-label", `Task: ${taskData.title}`);
 
-  // Checkbox
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
   checkbox.className = "taskdn-checkbox";
@@ -42,7 +41,6 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
 
     try {
       const newStatus = await toggleTaskStatus(file, app);
-      // Update DOM directly
       checkbox.checked = isDoneStatus(newStatus);
       container.dataset.status = newStatus;
       checkbox.setAttribute(
@@ -50,14 +48,12 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
         `Mark "${taskData.title}" as ${isDoneStatus(newStatus) ? "incomplete" : "complete"}`
       );
     } catch (err) {
-      // Revert checkbox visual state on error
       checkbox.checked = isDoneStatus(taskData.status);
       console.error("Taskdn: Failed to toggle task status:", err);
     }
   });
   container.appendChild(checkbox);
 
-  // Title (clickable to open file)
   const title = document.createElement("span");
   title.className = "taskdn-title";
   title.textContent = taskData.title;
@@ -84,11 +80,9 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
   });
   container.appendChild(title);
 
-  // Project/Area indicators
   const meta = document.createElement("span");
   meta.className = "taskdn-meta";
 
-  // Show project if present
   if (taskData.projects && taskData.projects.length > 0) {
     const projectLink = taskData.projects[0];
     const projectName = extractWikilinkTarget(projectLink) || projectLink;
@@ -101,14 +95,13 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
     meta.appendChild(projectEl);
   }
 
-  // Show area if present (and no project shown, to avoid clutter)
+  // Only show area if no project (to avoid clutter)
   if (taskData.area && (!taskData.projects || taskData.projects.length === 0)) {
     const areaName = extractWikilinkTarget(taskData.area) || taskData.area;
     const areaEl = createMetaLink(app, file.path, areaName, "taskdn-area");
     meta.appendChild(areaEl);
   }
 
-  // Due date (emoji moved to CSS for consistency)
   if (taskData.due) {
     const dueEl = document.createElement("span");
     dueEl.className = "taskdn-due";
@@ -124,9 +117,6 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
   return container;
 }
 
-/**
- * Create a clickable metadata link
- */
 function createMetaLink(
   app: App,
   sourcePath: string,
@@ -141,7 +131,6 @@ function createMetaLink(
   el.setAttribute("aria-label", `Open: ${linkText}`);
 
   const openLink = async () => {
-    // Use source path for proper relative link resolution
     const targetFile = app.metadataCache.getFirstLinkpathDest(
       linkText,
       sourcePath
@@ -150,7 +139,6 @@ function createMetaLink(
       const leaf = app.workspace.getLeaf(false);
       await leaf.openFile(targetFile);
     } else {
-      // Fallback to openLinkText for unresolved links
       await app.workspace.openLinkText(linkText, sourcePath, false);
     }
   };
@@ -171,7 +159,8 @@ function createMetaLink(
 }
 
 /**
- * Update an existing widget's display based on new task data
+ * Update an existing widget's display based on new task data.
+ * Project/area updates require a full widget rebuild via decoration refresh.
  */
 export function updateTaskWidget(
   widget: HTMLElement,
@@ -197,7 +186,6 @@ export function updateTaskWidget(
     title.setAttribute("aria-label", `Open task: ${taskData.title}`);
   }
 
-  // Update due date
   const existingDue = widget.querySelector<HTMLElement>(".taskdn-due");
   const meta = widget.querySelector<HTMLElement>(".taskdn-meta");
 
@@ -215,7 +203,4 @@ export function updateTaskWidget(
   } else if (existingDue) {
     existingDue.remove();
   }
-
-  // Note: Project/Area updates would require app and sourcePath to rebuild links.
-  // For now, those updates require a full widget rebuild via decoration refresh.
 }
