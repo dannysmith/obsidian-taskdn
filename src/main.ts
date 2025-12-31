@@ -9,12 +9,13 @@ import {
   extractChecklistInfo,
   sanitizeFilename,
   formatDate,
+  escapeYamlString,
 } from "./utils/task-utils";
 import { createTaskWidget, updateTaskWidget } from "./widgets/task-widget";
 import { taskLinkViewPlugin } from "./live-preview";
 
 export default class TaskdnPlugin extends Plugin {
-  settings: TaskdnSettings = DEFAULT_SETTINGS;
+  settings: TaskdnSettings = { ...DEFAULT_SETTINGS };
 
   async onload() {
     await this.loadSettings();
@@ -101,7 +102,8 @@ export default class TaskdnPlugin extends Plugin {
     element: HTMLElement,
     context: MarkdownPostProcessorContext
   ) {
-    const links = element.querySelectorAll<HTMLAnchorElement>("a.internal-link");
+    const links =
+      element.querySelectorAll<HTMLAnchorElement>("a.internal-link");
 
     links.forEach((link) => {
       const linkText = link.getAttribute("data-href");
@@ -133,7 +135,10 @@ export default class TaskdnPlugin extends Plugin {
    * Convert a checklist line to a Taskdn task
    */
   private async convertChecklistToTask(
-    editor: { getLine: (n: number) => string; setLine: (n: number, text: string) => void },
+    editor: {
+      getLine: (n: number) => string;
+      setLine: (n: number, text: string) => void;
+    },
     lineNumber: number
   ) {
     const line = editor.getLine(lineNumber);
@@ -141,17 +146,28 @@ export default class TaskdnPlugin extends Plugin {
 
     if (!text) return;
 
+    // Ensure tasks directory exists
+    const tasksDir = this.settings.tasksDirectory;
+    if (!this.app.vault.getAbstractFileByPath(tasksDir)) {
+      try {
+        await this.app.vault.createFolder(tasksDir);
+      } catch (err) {
+        console.error(`Taskdn: Failed to create tasks directory: ${err}`);
+        return;
+      }
+    }
+
     // Generate unique filename
     const filename = this.generateUniqueFilename(text);
-    const filePath = `${this.settings.tasksDirectory}/${filename}`;
+    const filePath = `${tasksDir}/${filename}`;
 
     // Determine status
     const status = checked ? "done" : this.settings.defaultStatus;
     const today = formatDate(new Date());
 
-    // Create task content
+    // Create task content with proper YAML escaping
     let content = `---
-title: "${text.replace(/"/g, '\\"')}"
+title: "${escapeYamlString(text)}"
 status: ${status}
 created-at: ${today}
 updated-at: ${today}`;
@@ -162,8 +178,13 @@ updated-at: ${today}`;
 
     content += "\n---\n";
 
-    // Create the file
-    await this.app.vault.create(filePath, content);
+    // Create the file - only modify the editor line if successful
+    try {
+      await this.app.vault.create(filePath, content);
+    } catch (err) {
+      console.error(`Taskdn: Failed to create task file: ${err}`);
+      return;
+    }
 
     // Replace checklist line with wikilink
     // Use just the filename without extension for the wikilink

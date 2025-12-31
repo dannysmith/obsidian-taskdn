@@ -19,10 +19,25 @@ import { TaskData } from "./types";
 // This prevents decoration rebuilds during click handling
 const widgetClickInProgress = new WeakSet<EditorView>();
 
+// Timeout for clearing click-in-progress state (ms)
+const CLICK_TIMEOUT_MS = 100;
+
+/**
+ * Helper to compare optional string arrays
+ */
+function arraysEqual(a?: string[], b?: string[]): boolean {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.length !== b.length) return false;
+  return a.every((val, i) => val === b[i]);
+}
+
 /**
  * CM6 Widget for rendering task links
  */
 class TaskLinkWidget extends WidgetType {
+  private clickTimeoutId: ReturnType<typeof setTimeout> | null = null;
+
   constructor(
     private plugin: TaskdnPlugin,
     private file: TFile,
@@ -42,6 +57,11 @@ class TaskLinkWidget extends WidgetType {
     // Prevent mousedown from triggering CM6 selection changes
     // This is critical - we stop the event in bubble phase after children receive it
     widget.addEventListener("mousedown", (e) => {
+      // Clear any pending timeout
+      if (this.clickTimeoutId !== null) {
+        clearTimeout(this.clickTimeoutId);
+      }
+
       // Mark that a click is in progress to prevent decoration rebuilds
       widgetClickInProgress.add(this.view);
 
@@ -49,19 +69,24 @@ class TaskLinkWidget extends WidgetType {
       e.stopPropagation();
 
       // Clear the flag after the click completes
-      setTimeout(() => {
+      this.clickTimeoutId = setTimeout(() => {
         widgetClickInProgress.delete(this.view);
-      }, 100);
+        this.clickTimeoutId = null;
+      }, CLICK_TIMEOUT_MS);
     });
 
     return widget;
   }
 
   eq(other: TaskLinkWidget): boolean {
+    // Compare all fields that affect the widget display
     return (
       this.file.path === other.file.path &&
       this.taskData.status === other.taskData.status &&
-      this.taskData.title === other.taskData.title
+      this.taskData.title === other.taskData.title &&
+      this.taskData.due === other.taskData.due &&
+      this.taskData.area === other.taskData.area &&
+      arraysEqual(this.taskData.projects, other.taskData.projects)
     );
   }
 
@@ -82,7 +107,10 @@ class TaskLinkWidget extends WidgetType {
 /**
  * Build decorations for task wikilinks
  */
-function buildDecorations(view: EditorView, plugin: TaskdnPlugin): DecorationSet {
+function buildDecorations(
+  view: EditorView,
+  plugin: TaskdnPlugin
+): DecorationSet {
   const builder = new RangeSetBuilder<Decoration>();
   const { state } = view;
 

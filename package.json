@@ -1,12 +1,15 @@
 {
   "name": "obsidian-taskdn",
   "version": "0.1.0",
+  "type": "module",
   "description": "Render wikilinks to Taskdn task files as interactive checklist widgets",
   "main": "main.js",
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "node esbuild.config.mjs production",
-    "version": "node version-bump.mjs && git add manifest.json versions.json"
+    "version": "node version-bump.mjs && git add manifest.json versions.json",
+    "check": "tsc --noEmit && eslint src && prettier --check src",
+    "fix": "eslint src --fix && prettier --write src"
   },
   "keywords": [
     "obsidian",
@@ -21,11 +24,18 @@
     "url": "git+https://github.com/dannysmith/obsidian-taskdn.git"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "@lezer/common": "^1.5.0",
     "@types/node": "^22.10.2",
     "builtin-modules": "^4.0.0",
     "esbuild": "^0.24.2",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
     "obsidian": "^1.7.2",
-    "typescript": "^5.7.2"
+    "prettier": "^3.7.4",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.51.0"
   },
   "dependencies": {
     "@codemirror/language": "^6.12.1",

@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting } from "obsidian";
 import type TaskdnPlugin from "./main";
-import { TaskStatus } from "./types";
+import { isValidStatus } from "./utils/task-utils";
 
 export class TaskdnSettingTab extends PluginSettingTab {
   plugin: TaskdnPlugin;
@@ -37,8 +37,10 @@ export class TaskdnSettingTab extends PluginSettingTab {
           .addOption("icebox", "Icebox")
           .setValue(this.plugin.settings.defaultStatus)
           .onChange(async (value) => {
-            this.plugin.settings.defaultStatus = value as TaskStatus;
-            await this.plugin.saveSettings();
+            if (isValidStatus(value)) {
+              this.plugin.settings.defaultStatus = value;
+              await this.plugin.saveSettings();
+            }
           })
       );
   }

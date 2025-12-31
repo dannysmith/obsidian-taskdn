@@ -2,6 +2,38 @@ import { App, TFile, CachedMetadata } from "obsidian";
 import { TaskData, TaskStatus } from "../types";
 
 /**
+ * Valid task statuses for runtime validation
+ */
+const VALID_STATUSES: readonly TaskStatus[] = [
+  "inbox",
+  "icebox",
+  "ready",
+  "in-progress",
+  "blocked",
+  "dropped",
+  "done",
+] as const;
+
+/**
+ * Check if a value is a valid TaskStatus
+ */
+export function isValidStatus(value: unknown): value is TaskStatus {
+  return (
+    typeof value === "string" && VALID_STATUSES.includes(value as TaskStatus)
+  );
+}
+
+/**
+ * Parse and validate a status from frontmatter, returning default if invalid
+ */
+export function parseStatus(
+  value: unknown,
+  defaultStatus: TaskStatus
+): TaskStatus {
+  return isValidStatus(value) ? value : defaultStatus;
+}
+
+/**
  * Check if a status represents a "done" task
  */
 export function isDoneStatus(status: TaskStatus): boolean {
@@ -13,7 +45,9 @@ export function isDoneStatus(status: TaskStatus): boolean {
  */
 export function isTaskPath(filePath: string, tasksDirectory: string): boolean {
   // Normalize paths - handle both with and without leading slash
-  const normalizedPath = filePath.startsWith("/") ? filePath.slice(1) : filePath;
+  const normalizedPath = filePath.startsWith("/")
+    ? filePath.slice(1)
+    : filePath;
   const normalizedTasksDir = tasksDirectory.startsWith("/")
     ? tasksDirectory.slice(1)
     : tasksDirectory;
@@ -52,7 +86,7 @@ export function getTaskDataFromCache(
 
   return {
     title: fm?.title ?? file.basename,
-    status: (fm?.status as TaskStatus) ?? "inbox",
+    status: parseStatus(fm?.status, "inbox"),
     due: fm?.due,
     scheduled: fm?.scheduled,
     deferUntil: fm?.["defer-until"],
@@ -99,11 +133,33 @@ export function formatDate(date: Date): string {
 
 /**
  * Format a date for display (e.g., "Jan 31")
+ * Parses YYYY-MM-DD format without timezone conversion issues
  */
 export function formatDateForDisplay(dateStr: string): string {
+  // Parse YYYY-MM-DD format directly to avoid timezone issues
+  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (match) {
+    const [, year, month, day] = match;
+    // Create date with local timezone (noon to avoid DST edge cases)
+    const date = new Date(
+      parseInt(year),
+      parseInt(month) - 1,
+      parseInt(day),
+      12
+    );
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+  }
+  // Fallback for other formats
   try {
     const date = new Date(dateStr);
-    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+    if (isNaN(date.getTime())) return dateStr;
+    return date.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
   } catch {
     return dateStr;
   }
@@ -111,9 +167,10 @@ export function formatDateForDisplay(dateStr: string): string {
 
 /**
  * Check if a line is a checklist item
+ * Requires a list marker (-, *, or numbered) followed by checkbox
  */
 export function isChecklistLine(line: string): boolean {
-  return /^[\s]*[-*]?\s*\[[ xX]\]\s*.+$/.test(line);
+  return /^\s*([-*]|\d+\.)\s+\[[ xX]\]\s+.+$/.test(line);
 }
 
 /**
@@ -125,7 +182,7 @@ export function extractChecklistInfo(line: string): {
   indent: string;
   listMarker: string;
 } {
-  const match = line.match(/^([\s]*)([-*]|\d+\.)\s*\[([ xX])\]\s*(.+)$/);
+  const match = line.match(/^(\s*)([-*]|\d+\.)\s+\[([ xX])\]\s+(.+)$/);
   if (!match) {
     return { text: "", checked: false, indent: "", listMarker: "-" };
   }
@@ -141,12 +198,15 @@ export function extractChecklistInfo(line: string): {
  * Sanitize a string for use as a filename
  */
 export function sanitizeFilename(text: string): string {
-  return text
+  const sanitized = text
     .replace(/[\\/:*?"<>|]/g, "-") // Replace invalid chars
     .replace(/\s+/g, "-") // Replace spaces with hyphens
     .replace(/-+/g, "-") // Collapse multiple hyphens
     .replace(/^-|-$/g, "") // Remove leading/trailing hyphens
     .slice(0, 100); // Limit length
+
+  // Return default if sanitization results in empty string
+  return sanitized || "untitled-task";
 }
 
 /**
@@ -155,4 +215,16 @@ export function sanitizeFilename(text: string): string {
 export function extractWikilinkTarget(text: string): string | null {
   const match = text.match(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/);
   return match ? match[1] : null;
+}
+
+/**
+ * Escape a string for use in YAML double-quoted string
+ */
+export function escapeYamlString(text: string): string {
+  return text
+    .replace(/\\/g, "\\\\") // Backslashes first
+    .replace(/"/g, '\\"') // Double quotes
+    .replace(/\n/g, "\\n") // Newlines
+    .replace(/\r/g, "\\r") // Carriage returns
+    .replace(/\t/g, "\\t"); // Tabs
 }

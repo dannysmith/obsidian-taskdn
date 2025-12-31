@@ -6,6 +6,10 @@ main.js
 node_modules/
 bun.lock
 
+*.local/
+*.local
+*.local.*
+
 # IDE
 .idea/
 .vscode/
