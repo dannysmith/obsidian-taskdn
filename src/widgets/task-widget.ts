@@ -108,7 +108,10 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
     const deferEl = document.createElement("span");
     deferEl.className = "taskdn-defer";
     deferEl.textContent = formatDateForDisplay(taskData.deferUntil);
-    deferEl.setAttribute("aria-label", `Deferred until: ${taskData.deferUntil}`);
+    deferEl.setAttribute(
+      "aria-label",
+      `Deferred until: ${taskData.deferUntil}`
+    );
     meta.appendChild(deferEl);
   }
 
@@ -123,6 +126,13 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
   if (meta.hasChildNodes()) {
     container.appendChild(meta);
   }
+
+  const desktopBtn = document.createElement("span");
+  desktopBtn.className = "taskdn-desktop-btn";
+  desktopBtn.setAttribute("role", "button");
+  desktopBtn.setAttribute("aria-label", "Open in desktop app");
+  desktopBtn.textContent = "↗";
+  container.appendChild(desktopBtn);
 
   return container;
 }

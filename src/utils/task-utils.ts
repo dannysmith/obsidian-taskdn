@@ -152,7 +152,11 @@ function parseDateString(dateStr: string): Date | null {
  * Get days difference between two dates (ignoring time)
  */
 function getDaysDiff(date: Date, today: Date): number {
-  const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  const dateOnly = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate()
+  );
   const todayOnly = new Date(
     today.getFullYear(),
     today.getMonth(),

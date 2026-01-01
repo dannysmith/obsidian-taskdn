@@ -167,3 +167,22 @@
   top: 50%;
   transform: translateY(-50%);
 }
+
+/* Desktop app button - hidden by default */
+.taskdn-desktop-btn {
+  display: none;
+  cursor: pointer;
+  font-size: 0.75em;
+  opacity: 0.4;
+  margin-left: 0.25em;
+}
+
+.taskdn-desktop-btn:hover {
+  opacity: 1;
+  color: var(--text-accent);
+}
+
+/* Show button when setting enabled */
+body.taskdn-show-desktop-btn .taskdn-desktop-btn {
+  display: inline;
+}

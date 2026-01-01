@@ -1,4 +1,4 @@
-import { Plugin, TFile, MarkdownPostProcessorContext } from "obsidian";
+import { Plugin, TFile, MarkdownPostProcessorContext, Menu } from "obsidian";
 import { TaskdnSettings, DEFAULT_SETTINGS } from "./types";
 import { TaskdnSettingTab } from "./settings";
 import {
@@ -70,6 +70,34 @@ export default class TaskdnPlugin extends Plugin {
         }
       })
     );
+
+    this.updateDesktopButtonClasses();
+
+    this.registerDomEvent(document, "click", (e) => {
+      const btn = (e.target as HTMLElement).closest(".taskdn-desktop-btn");
+      if (!btn) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const widget = btn.closest(".taskdn-widget");
+      const filePath = widget?.getAttribute("data-file-path");
+      if (filePath) this.openInDesktopApp(filePath);
+    });
+
+    this.registerDomEvent(document, "contextmenu", (e) => {
+      const widget = (e.target as HTMLElement).closest(".taskdn-widget");
+      if (!widget) return;
+      const filePath = widget.getAttribute("data-file-path");
+      if (!filePath) return;
+
+      const menu = new Menu();
+      menu.addItem((item) =>
+        item
+          .setTitle("Open in taskdn desktop app")
+          .setIcon("arrow-up-right")
+          .onClick(() => this.openInDesktopApp(filePath))
+      );
+      menu.showAtMouseEvent(e);
+    });
   }
 
   onunload() {
@@ -82,6 +110,21 @@ export default class TaskdnPlugin extends Plugin {
 
   async saveSettings() {
     await this.saveData(this.settings);
+  }
+
+  updateDesktopButtonClasses() {
+    document.body.classList.toggle(
+      "taskdn-show-desktop-btn",
+      this.settings.showDesktopAppButton
+    );
+  }
+
+  private openInDesktopApp(filePath: string) {
+    const vaultPath = (this.app.vault.adapter as { basePath?: string })
+      .basePath;
+    if (!vaultPath) return;
+    const absolutePath = `${vaultPath}/${filePath}`;
+    window.open(`taskdn://open?path=${encodeURIComponent(absolutePath)}`);
   }
 
   /**
@@ -131,7 +174,8 @@ export default class TaskdnPlugin extends Plugin {
 
         // Extract checkbox to match native task-list-item structure exactly
         // Native: <li class="task-list-item"><input class="task-list-item-checkbox">text</li>
-        const checkbox = widget.querySelector<HTMLInputElement>(".taskdn-checkbox");
+        const checkbox =
+          widget.querySelector<HTMLInputElement>(".taskdn-checkbox");
         if (checkbox) {
           checkbox.classList.add("task-list-item-checkbox");
           checkbox.remove();

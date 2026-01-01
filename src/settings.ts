@@ -43,5 +43,18 @@ export class TaskdnSettingTab extends PluginSettingTab {
             }
           })
       );
+
+    new Setting(containerEl)
+      .setName("Show desktop app button")
+      .setDesc("Show a button on tasks to open them in the taskdn desktop app")
+      .addToggle((toggle) =>
+        toggle
+          .setValue(this.plugin.settings.showDesktopAppButton)
+          .onChange(async (value) => {
+            this.plugin.settings.showDesktopAppButton = value;
+            await this.plugin.saveSettings();
+            this.plugin.updateDesktopButtonClasses();
+          })
+      );
   }
 }

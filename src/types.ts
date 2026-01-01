@@ -30,9 +30,11 @@ export interface TaskData {
 export interface TaskdnSettings {
   tasksDirectory: string;
   defaultStatus: TaskStatus;
+  showDesktopAppButton: boolean;
 }
 
 export const DEFAULT_SETTINGS: TaskdnSettings = {
   tasksDirectory: "tasks",
   defaultStatus: "inbox",
+  showDesktopAppButton: false,
 };
