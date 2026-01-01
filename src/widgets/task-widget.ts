@@ -11,50 +11,42 @@ export interface TaskWidgetOptions {
   app: App;
   file: TFile;
   taskData: TaskData;
+  /** Whether this widget is replacing a list item marker (for native-like checkbox positioning) */
+  isListItem?: boolean;
 }
 
 /**
  * Create a task widget DOM element
  * Shared between Live Preview and Reading Mode
+ *
+ * When isListItem is true, uses native Obsidian checkbox structure:
+ * <span class="taskdn-widget-wrapper">
+ *   <label class="task-list-label">
+ *     <input class="task-list-item-checkbox taskdn-checkbox" data-task=" ">
+ *   </label>
+ *   <span class="taskdn-widget taskdn-content">...</span>
+ * </span>
  */
 export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
-  const { app, file, taskData } = options;
+  const { app, file, taskData, isListItem = false } = options;
+  const isDone = isDoneStatus(taskData.status);
 
-  const container = document.createElement("span");
-  container.className = "taskdn-widget";
-  container.dataset.status = taskData.status;
-  container.dataset.filePath = file.path;
-  container.setAttribute("role", "group");
-  container.setAttribute("aria-label", `Task: ${taskData.title}`);
-
+  // Create checkbox element
   const checkbox = document.createElement("input");
   checkbox.type = "checkbox";
-  checkbox.className = "taskdn-checkbox";
-  checkbox.checked = isDoneStatus(taskData.status);
+  checkbox.checked = isDone;
   checkbox.setAttribute(
     "aria-label",
-    `Mark "${taskData.title}" as ${isDoneStatus(taskData.status) ? "incomplete" : "complete"}`
+    `Mark "${taskData.title}" as ${isDone ? "incomplete" : "complete"}`
   );
-  checkbox.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
 
-    void (async () => {
-      try {
-        const newStatus = await toggleTaskStatus(file, app);
-        checkbox.checked = isDoneStatus(newStatus);
-        container.dataset.status = newStatus;
-        checkbox.setAttribute(
-          "aria-label",
-          `Mark "${taskData.title}" as ${isDoneStatus(newStatus) ? "incomplete" : "complete"}`
-        );
-      } catch (err) {
-        checkbox.checked = isDoneStatus(taskData.status);
-        console.error("Taskdn: Failed to toggle task status:", err);
-      }
-    })();
-  });
-  container.appendChild(checkbox);
+  // Build the content container (title, meta, desktop button)
+  const content = document.createElement("span");
+  content.className = "taskdn-widget";
+  content.dataset.status = taskData.status;
+  content.dataset.filePath = file.path;
+  content.setAttribute("role", "group");
+  content.setAttribute("aria-label", `Task: ${taskData.title}`);
 
   const title = document.createElement("span");
   title.className = "taskdn-title";
@@ -80,7 +72,7 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
       void openFile();
     }
   });
-  container.appendChild(title);
+  content.appendChild(title);
 
   const meta = document.createElement("span");
   meta.className = "taskdn-meta";
@@ -124,7 +116,7 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
   }
 
   if (meta.hasChildNodes()) {
-    container.appendChild(meta);
+    content.appendChild(meta);
   }
 
   const desktopBtn = document.createElement("span");
@@ -132,9 +124,78 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
   desktopBtn.setAttribute("role", "button");
   desktopBtn.setAttribute("aria-label", "Open in desktop app");
   desktopBtn.textContent = "↗";
-  container.appendChild(desktopBtn);
+  content.appendChild(desktopBtn);
 
-  return container;
+  // For list items, use native-like structure with checkbox outside
+  if (isListItem) {
+    checkbox.className = "task-list-item-checkbox taskdn-checkbox";
+    checkbox.dataset.task = isDone ? "x" : " ";
+
+    const wrapper = document.createElement("span");
+    wrapper.className = "taskdn-widget-wrapper";
+    wrapper.dataset.status = taskData.status;
+
+    const label = document.createElement("label");
+    label.className = "task-list-label";
+    label.contentEditable = "false";
+    label.appendChild(checkbox);
+
+    wrapper.appendChild(label);
+    wrapper.appendChild(content);
+
+    // Checkbox click handler - update wrapper status too
+    checkbox.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      void (async () => {
+        try {
+          const newStatus = await toggleTaskStatus(file, app);
+          const newIsDone = isDoneStatus(newStatus);
+          checkbox.checked = newIsDone;
+          checkbox.dataset.task = newIsDone ? "x" : " ";
+          content.dataset.status = newStatus;
+          wrapper.dataset.status = newStatus;
+          checkbox.setAttribute(
+            "aria-label",
+            `Mark "${taskData.title}" as ${newIsDone ? "incomplete" : "complete"}`
+          );
+        } catch (err) {
+          checkbox.checked = isDone;
+          console.error("Taskdn: Failed to toggle task status:", err);
+        }
+      })();
+    });
+
+    return wrapper;
+  }
+
+  // For non-list items (inline), keep checkbox inside content
+  checkbox.className = "taskdn-checkbox";
+  checkbox.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    void (async () => {
+      try {
+        const newStatus = await toggleTaskStatus(file, app);
+        checkbox.checked = isDoneStatus(newStatus);
+        content.dataset.status = newStatus;
+        checkbox.setAttribute(
+          "aria-label",
+          `Mark "${taskData.title}" as ${isDoneStatus(newStatus) ? "incomplete" : "complete"}`
+        );
+      } catch (err) {
+        checkbox.checked = isDone;
+        console.error("Taskdn: Failed to toggle task status:", err);
+      }
+    })();
+  });
+
+  // Insert checkbox at the beginning of content
+  content.insertBefore(checkbox, content.firstChild);
+
+  return content;
 }
 
 function createMetaLink(

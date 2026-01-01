@@ -39,7 +39,8 @@ class TaskLinkWidget extends WidgetType {
     private plugin: TaskdnPlugin,
     private file: TFile,
     private taskData: TaskData,
-    private view: EditorView
+    private view: EditorView,
+    private isListItem: boolean = false
   ) {
     super();
   }
@@ -49,6 +50,7 @@ class TaskLinkWidget extends WidgetType {
       app: this.plugin.app,
       file: this.file,
       taskData: this.taskData,
+      isListItem: this.isListItem,
     });
 
     // Prevent CM6 from handling mouse events on the widget
@@ -76,6 +78,7 @@ class TaskLinkWidget extends WidgetType {
       this.taskData.title === other.taskData.title &&
       this.taskData.due === other.taskData.due &&
       this.taskData.area === other.taskData.area &&
+      this.isListItem === other.isListItem &&
       arraysEqual(this.taskData.projects, other.taskData.projects)
     );
   }
@@ -158,6 +161,9 @@ function buildDecorations(
           const cache = plugin.app.metadataCache.getFileCache(taskFile);
           const taskData = getTaskDataFromCache(taskFile, cache);
 
+          // Check if there's a list marker before the link
+          const { hasListMarker } = findListMarkerStart(state, linkStart);
+
           // Add line decoration to make line behave like native task line
           const lineStart = state.doc.lineAt(linkStart).from;
           if (!taskLineStarts.has(lineStart)) {
@@ -165,16 +171,28 @@ function buildDecorations(
             decorations.push({
               from: lineStart,
               to: lineStart,
-              decoration: Decoration.line({ class: "HyperMD-task-line" }),
+              decoration: Decoration.line({
+                class: "HyperMD-task-line",
+                attributes: {
+                  "data-task": taskData.status === "done" ? "x" : " ",
+                },
+              }),
             });
           }
 
-          // Add widget decoration
+          // Replace only the wikilink, NOT the list marker
+          // The list marker will be hidden via CSS and checkbox positioned in its place
           decorations.push({
             from: linkStart,
             to: linkEnd,
             decoration: Decoration.replace({
-              widget: new TaskLinkWidget(plugin, taskFile, taskData, view),
+              widget: new TaskLinkWidget(
+                plugin,
+                taskFile,
+                taskData,
+                view,
+                hasListMarker
+              ),
             }),
           });
         }
@@ -201,6 +219,33 @@ function findLinkStart(state: EditorState, pos: number): number {
     }
   }
   return pos;
+}
+
+/**
+ * Find if there's a list marker before the link and return its start position.
+ * Returns the link start if no list marker found.
+ */
+function findListMarkerStart(
+  state: EditorState,
+  linkStart: number
+): { start: number; hasListMarker: boolean } {
+  const line = state.doc.lineAt(linkStart);
+  const beforeLink = line.text.slice(0, linkStart - line.from);
+
+  // Match list marker patterns: "- ", "* ", "+ ", or numbered "1. ", "2. " etc.
+  // The list marker should be at the start (after optional whitespace)
+  const listMarkerMatch = beforeLink.match(/^(\s*)([-*+]|\d+\.)\s+$/);
+
+  if (listMarkerMatch) {
+    // Return position after leading whitespace but include the marker
+    const leadingWhitespace = listMarkerMatch[1].length;
+    return {
+      start: line.from + leadingWhitespace,
+      hasListMarker: true,
+    };
+  }
+
+  return { start: linkStart, hasListMarker: false };
 }
 
 function findLinkEnd(state: EditorState, pos: number): number {

@@ -2,7 +2,7 @@
 
 .taskdn-widget {
   display: inline-flex;
-  align-items: center;
+  align-items: baseline;
   gap: 0.4em;
   padding: 0.1em 0.4em;
   border-radius: 4px;
@@ -61,7 +61,6 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5em;
-  margin-left: 0.5em;
   font-size: 0.85em;
   color: var(--text-muted);
 }
@@ -150,22 +149,57 @@
 /* Reading mode: Checkbox is extracted with task-list-item-checkbox class,
    so it inherits native positioning automatically. No hack needed. */
 
-/* Live Preview: Line gets HyperMD-task-line class via decoration.
-   Hide bullet and position checkbox in its place. */
-.cm-line:has(.taskdn-widget) .list-bullet {
+/* ============================================
+   Live Preview: Native-like checkbox structure
+   ============================================ */
+
+/* Force same indent as native task lines (CodeMirror calculates 23px for list items,
+   but native tasks get 30px - we need to match native tasks) */
+.cm-line:has(.taskdn-widget-wrapper) {
+  text-indent: -30px !important;
+  padding-inline-start: 30px !important;
+}
+
+/* Hide the entire list formatting span (contains the bullet) */
+.cm-line:has(.taskdn-widget-wrapper) .cm-formatting-list {
   display: none;
 }
 
-.cm-line:has(.taskdn-widget) .taskdn-widget {
-  position: relative;
-  margin-left: 1em;
+/* Widget wrapper: inline layout, checkbox flows naturally with text-indent */
+.taskdn-widget-wrapper {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.35em;
 }
 
-.cm-line:has(.taskdn-widget) .taskdn-checkbox {
-  position: absolute;
-  left: calc(-1 * var(--checkbox-size, 1.1em) + 0.4em);
-  top: 50%;
-  transform: translateY(-50%);
+/* Checkbox label */
+.taskdn-widget-wrapper .task-list-label {
+  cursor: pointer;
+}
+
+/* Checkbox inherits native Obsidian styling via task-list-item-checkbox */
+.taskdn-widget-wrapper .task-list-item-checkbox {
+  margin: 0;
+  cursor: pointer;
+}
+
+/* Content: no background/padding in list context */
+.taskdn-widget-wrapper .taskdn-widget {
+  background-color: transparent;
+  padding: 0;
+}
+
+/* Status styling on wrapper */
+.taskdn-widget-wrapper[data-status="done"] {
+  opacity: 0.7;
+}
+
+.taskdn-widget-wrapper[data-status="blocked"] .taskdn-widget {
+  border-left: 3px solid var(--text-warning);
+}
+
+.taskdn-widget-wrapper[data-status="in-progress"] .taskdn-widget {
+  border-left: 3px solid var(--text-accent);
 }
 
 /* Desktop app button - hidden by default */
