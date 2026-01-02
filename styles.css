@@ -70,6 +70,7 @@
   cursor: pointer;
   color: var(--text-accent);
   opacity: 0.8;
+  white-space: nowrap;
 }
 
 .taskdn-project:hover {
@@ -92,6 +93,7 @@
   cursor: pointer;
   color: var(--text-accent);
   opacity: 0.8;
+  white-space: nowrap;
 }
 
 .taskdn-area:hover {
@@ -209,18 +211,35 @@
 }
 
 /* Narrow mode: button moves next to title, meta drops below */
-@container (max-width: 500px) {
+@container (max-width: 450px) {
   .taskdn-widget-wrapper .taskdn-widget {
-    grid-template-columns: 1fr auto;
+    grid-template-columns: auto auto;
     grid-template-areas:
       "title btn"
       "meta meta";
+    justify-content: start;
     row-gap: 0.2em;
   }
 
   .taskdn-widget-wrapper .taskdn-title {
     overflow-wrap: break-word;
     min-width: 0;
+  }
+
+  /* Meta wraps as flexbox in narrow mode */
+  .taskdn-widget-wrapper .taskdn-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em 0.5em;
+  }
+}
+
+/* Very narrow: stack meta items vertically */
+@container (max-width: 280px) {
+  .taskdn-widget-wrapper .taskdn-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15em;
   }
 }
 
