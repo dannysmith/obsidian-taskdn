@@ -1,32 +1,54 @@
 # Obsidian Taskdn
 
-An Obsidian plugin for [Taskdn](https://github.com/dannysmith/taskdn), a task management system that stores tasks as markdown files with YAML frontmatter.
+An Obsidian plugin for [Taskdn](https://github.com/dannysmith/taskdn), a file-based task management system that stores tasks as Markdown files with YAML frontmatter.
 
-Taskdn's data lives as plain files on disk (so you can use Obsidian, VS Code, or AI tools to work with it). Taskdn includes a Desktop app, CLI tool (with a special `--ai` mode for LLMs), a Claude Code plugin and an Obsidian plugin. This is the Obsidian plugin.
+Taskdn keeps everything as plain files on disk, so you can work with your tasks in Obsidian, the Taskdn desktop app, CLI tools, or AI agents. This plugin turns wikilinks to task files into interactive widgets.
 
-<img width="641" height="120" alt="obsidian-tdn-example" src="https://github.com/user-attachments/assets/c9328012-fcb0-4956-80a0-9cbb0d9e53e1" />
+<!-- TODO: Add screenshot -->
+![Screenshot placeholder](https://via.placeholder.com/800x400?text=Screenshot+coming+soon)
 
+## Features
+
+Wikilinks to task files become clickable widgets with:
+
+- Checkbox to toggle completion (switches between `ready` and `done`)
+- Task title (click to open the file)
+- Project, area, and due/defer dates when present
+- Coloured left border showing status (blue = inbox, yellow = in-progress, red = blocked, etc.)
+
+When you put a task link in a bullet list (`- [[my-task]]`), it behaves like a native Obsidian checklist—completing it strikes through the whole line.
+
+You can also right-click any checklist item (`- [ ] Do something`) to convert it into a Taskdn task file.
+
+## Prerequisites
+
+1. WikiLinks must be enabled (Settings → Files & Links → "Use [[Wikilinks]]")
+2. You need a tasks folder with files following the [Taskdn spec](https://github.com/dannysmith/taskdn/blob/main/tdn-specs/S1-core.md)
 
 ## Installation
 
-1. Open Settings → Community Plugins
+1. Settings → Community Plugins
 2. Search for "Taskdn"
-3. Click Install, then Enable
+3. Install and enable
 
 ## Configuration
 
-Go to Settings → Taskdn:
+In Settings → Taskdn:
 
-- **Tasks directory** – Path to the folder containing task files (default: `tasks`)
-- **Default status** – Status for tasks created from checklist items (default: `inbox`)
+- **Tasks directory** – where your task files live (default: `tasks`)
+- **Default status** – status for newly converted tasks (default: `inbox`)
+- **Show desktop app button** – adds a button to open tasks in the Taskdn desktop app
 
 ## Usage
 
-Wikilinks to task files are rendered as interactive widgets with a checkbox, title, project/area, and due date. Click the checkbox to toggle completion, or click the title to open the task file.
+Link to any task file in your tasks directory:
 
-To convert a checklist item to a task, right-click on a line like `- [ ] My task` and select "Convert to Taskdn task".
+```markdown
+- [[my-task]]
+Check out [[another-task]] for details.
+```
 
-Task files follow the [Taskdn specification](https://github.com/dannysmith/taskdn/blob/main/tdn-specs/S1-core.md).
+Works in both Live Preview and Reading Mode.
 
 ## Development
 
@@ -37,10 +59,10 @@ bun install
 bun run dev      # Watch mode
 bun run build    # Production build
 bun run check    # Type check + lint
-bun run fix      # Auto-fix lint/format issues
+bun run fix      # Auto-fix lint/format
 ```
 
-To test locally, copy `main.js`, `manifest.json`, and `styles.css` to `.obsidian/plugins/taskdn/` in your vault.
+To test, copy `main.js`, `manifest.json`, and `styles.css` to `.obsidian/plugins/taskdn/` in your vault.
 
 ## License
 
