@@ -38,6 +38,7 @@ In Settings → Taskdn:
 - **Tasks directory** – where your task files live (default: `tasks`)
 - **Default status** – status for newly converted tasks (default: `inbox`)
 - **Show desktop app button** – adds a button to open tasks in the Taskdn desktop app
+- **Ignored files** – task files to exclude from widget rendering (one pattern per line, supports `*` wildcard). Paths are relative to the tasks directory, e.g. `archive/*` or `*-template`
 
 ## Usage
 
