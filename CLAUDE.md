@@ -1,190 +1,182 @@
 # AI Agent Instructions
 
-This file provides guidance to AI Agents like Claude Code when working with code in this repository.
+Guidance for AI agents working in this Obsidian plugin codebase.
 
 ## What is Taskdn?
 
-Taskdn is a file-based task management system that stores tasks, projects, and areas as Markdown files with YAML frontmatter. It follows GTD/PARA methodology: **Tasks** are actionable items that can belong to **Projects** (finishable collections of tasks) or **Areas** (ongoing responsibilities like "Health" or "Work"). All data lives as plain files on disk, enabling interaction via Obsidian, CLI tools, or AI agents. This plugin renders wikilinks to task files as interactive widgets—it currently only handles tasks, not projects or areas.
+Taskdn is a file-based task management system that stores tasks, projects, and areas as Markdown files with YAML frontmatter. It draws on GTD and PARA methodology: **Tasks** are small, actionable items. **Projects** are collections of tasks that are "finishable" (they have a clear end state). **Areas** are ongoing responsibilities that are never finished (like "Health", "Finances", or "Client: Acme Corp"). Tasks can be loose, belong to an area directly, or belong to a project (which may itself belong to an area). All data lives as plain files on disk, enabling interaction via Obsidian, the Taskdn desktop app, CLI tools, or AI agents.
 
-## Task File Specification (S1-core)
+This plugin renders wikilinks to task files as interactive widgets. It currently only handles tasks—not projects or areas.
 
-Tasks must be stored in a designated tasks directory. The frontmatter follows this spec:
+## Obsidian View Modes
 
-### Required Fields
+Obsidian has two main modes for viewing notes:
 
-| Field        | Type             | Description                        |
-|--------------|------------------|------------------------------------|
-| `title`      | string           | The title of the task              |
-| `status`     | enum             | See status values below            |
-| `created-at` | date or datetime | When the task was created          |
-| `updated-at` | date or datetime | When the task was last modified    |
+- **Reading Mode**: Renders the note as formatted output (no editing). We use a markdown post-processor to replace task links with widgets.
+- **Editing Mode**: Where you edit the note. Has two sub-modes:
+  - **Live Preview** (default): Shows formatted content inline while editing. We use CM6 decorations to replace task wikilinks with widgets.
+  - **Source Mode**: Shows raw markdown only. **We must never render widgets in Source Mode**—users expect to see and edit the raw `[[wikilink]]` syntax. Check `editorLivePreviewField` to detect this.
 
-### Optional Fields
+## Design Philosophy
 
-| Field          | Type                     | Description                                           |
-|----------------|--------------------------|-------------------------------------------------------|
-| `completed-at` | date or datetime         | Set when status becomes `done` or `dropped`           |
-| `area`         | file reference           | Reference to an Area file (wikilink or path)          |
-| `projects`     | array of file references | Single-element array with project reference           |
-| `due`          | date or datetime         | Hard deadline                                         |
-| `scheduled`    | date                     | Planned work date                                     |
-| `defer-until`  | date                     | Hide until this date                                  |
+Aim for maximum compatibility with themes and other plugins:
 
-### Status Values
+- Follow Obsidian conventions as closely as possible
+- Use Obsidian's CSS variables, not hardcoded colors
+- Mimic native Obsidian structures (e.g., task checkboxes use `task-list-item-checkbox` class)
+- Keep CSS selectors simple and avoid overly specific rules that might conflict
+- Don't assume specific DOM structures from other plugins
 
-| Status        | Description                                    |
-|---------------|------------------------------------------------|
-| `inbox`       | Newly captured, not yet processed              |
-| `icebox`      | Intentionally deferred indefinitely            |
-| `ready`       | Processed and ready to work on                 |
-| `in-progress` | Currently being worked on                      |
-| `blocked`     | Cannot proceed due to external dependency      |
-| `dropped`     | Abandoned, will not be completed               |
-| `done`        | Completed successfully                         |
-
-Dates use ISO 8601 format: `YYYY-MM-DD` or `YYYY-MM-DDTHH:MM`.
-
-## Status Display Semantics
-
-| Status        | Border Color       | Special Treatment              |
-|---------------|--------------------|--------------------------------|
-| `inbox`       | Blue               | —                              |
-| `icebox`      | Cyan               | —                              |
-| `ready`       | None               | Neutral default state          |
-| `in-progress` | Yellow             | —                              |
-| `blocked`     | Red                | —                              |
-| `dropped`     | Pink               | Opacity 0.7, title strikethrough |
-| `done`        | None               | Opacity 0.7, title strikethrough |
-
-## Widget Types
-
-### Inline Widget
-When a task wikilink appears within text (e.g., `Check out [[my-task]] for details`):
-- Renders as a self-contained pill with checkbox inside
-- Has `taskdn-inline` class to isolate from parent text-decoration
-- Does not affect surrounding content styling
-
-### List Item Widget
-When a task wikilink is the first thing after a bullet marker (e.g., `- [[my-task]]`):
-- Behaves like a native Obsidian checklist item
-- Checkbox positioned outside the widget (native `task-list-item-checkbox` class)
-- Line gets `HyperMD-task-line` class in Live Preview
-- Completing the task strikes through the entire line (not just the widget)
-- Uses `taskdn-widget-wrapper` structure with checkbox in a label
-
-## Widget Features
-
-- **Title**: Clickable link that opens the task file
-- **Metadata display**: Shows first project (with `○` prefix), area (with `📁` prefix), defer-until date (`⏳`), and due date (`📅`)
-- **Checkbox**: Toggles between `ready` and `done` status, updates frontmatter
-- **Desktop app button**: Opens task in Taskdn desktop app via `taskdn://` URL scheme (hidden by default, enabled in settings)
-- **Context menu**: Right-click shows "Open in taskdn desktop app" option
-- **Convert to task**: Right-clicking a checklist line (`- [ ] text`) shows "Convert to task" to create a task file and replace the line with a wikilink
-
-## File Structure
-
-```
-src/
-├── main.ts              # Plugin entry point, lifecycle, event handlers
-├── live-preview.ts      # CM6 ViewPlugin for Live Preview decorations
-├── settings.ts          # Settings tab UI
-├── types.ts             # TypeScript types (TaskStatus, TaskData, TaskdnSettings)
-├── utils/
-│   └── task-utils.ts    # Task resolution, status toggling, date formatting
-└── widgets/
-    └── task-widget.ts   # Shared widget DOM creation for both modes
-styles.css               # All widget styling, responsive layouts
-```
-
-### Key Code Paths
-
-**Live Preview** (`live-preview.ts`):
-- `taskLinkViewPlugin()` creates a CM6 `ViewPlugin`
-- `buildDecorations()` iterates visible ranges, finds wikilinks via syntax tree
-- Creates `Decoration.replace()` with `TaskLinkWidget` (extends `WidgetType`)
-- Line decorations add `HyperMD-task-line` class for native task styling
-- Decorations rebuild on `docChanged`, `viewportChanged`, `selectionSet`
-
-**Reading Mode** (`main.ts:processTaskLinks`):
-- Markdown post-processor finds `a.internal-link` elements
-- Calls `createTaskWidget()` and replaces the link
-- Adds `task-list-item` class to parent `<li>` when appropriate
-
-**Widget Creation** (`widgets/task-widget.ts`):
-- `createTaskWidget()` builds DOM for both modes
-- `isListItem` param determines checkbox position (inside vs outside widget)
-- Checkbox click calls `toggleTaskStatus()` which uses `processFrontMatter()`
-
-## Development Rules
-
-1. **Always use `bun`** for package management and scripts
-2. **Always run `bun run build`** before asking the user to test locally
-3. **Always run `bun run check`** before committing to catch type/lint errors
-4. Use Obsidian's CSS variables (e.g., `--text-normal`, `--color-blue`) rather than hardcoded colors
-5. Use `createEl()`, `createDiv()`, `createSpan()` instead of `innerHTML` for security
-6. Access app via `this.app`, never global `app` or `window.app`
-7. Register events with `registerEvent()` and commands with `addCommand()` for automatic cleanup
-8. Use `processFrontMatter()` for YAML modifications, not direct file writes
-9. Read task data from `metadataCache`, never parse files directly
-10. Never use lookbehind assertions in regex (breaks mobile)
-
-## CSS Development
-
-The `css-expert` skill is useful when working on styles. Key challenges in this codebase:
-
-- **Live Preview alignment**: Uses `text-indent: -30px` trick to match native task checkbox positioning
-- **Container queries**: Used for responsive widget layout at narrow widths
-- **List marker hiding**: `.cm-formatting-list` is hidden, checkbox takes its place
-- **Strikethrough isolation**: Inline widgets use `text-decoration: none` to prevent inheritance
-
-## Documentation References
-
-### Obsidian Plugin Development
-- **Developer Docs Home**: https://docs.obsidian.md/Home
-- **Plugin API Types**: https://github.com/obsidianmd/obsidian-api
-- **Sample Plugin**: https://github.com/obsidianmd/obsidian-sample-plugin
-- **Plugin Guidelines**: https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines
-- **Submission Requirements**: https://docs.obsidian.md/Plugins/Releasing/Submission+requirements+for+plugins
-- **Developer Forum**: https://forum.obsidian.md/c/developers-api/14
-
-### Editor Extensions (CodeMirror 6)
-- **Editor Extensions**: https://docs.obsidian.md/Plugins/Editor/Editor+extensions
-- **Decorations**: https://docs.obsidian.md/Plugins/Editor/Decorations
-- **View Plugins**: https://docs.obsidian.md/Plugins/Editor/View+plugins
-- **State Fields**: https://docs.obsidian.md/Plugins/Editor/State+fields
-
-### CSS Variables
-- **CSS Variables Overview**: https://docs.obsidian.md/Reference/CSS+variables/CSS+variables
-- **Colors Reference**: https://docs.obsidian.md/Reference/CSS+variables/Foundations/Colors
-- **About Styling**: https://docs.obsidian.md/Reference/CSS+variables/About+styling
-- **Editor List Styles**: https://docs.obsidian.md/Reference/CSS+variables/Editor/List
-
-### Context7 Commands
+## Commands
 
 ```bash
-# Obsidian Help documentation
-mcp__context7__query-docs libraryId="/websites/help_obsidian_md" query="your query"
-
-# CodeMirror 6 documentation (decorations, widgets, view plugins)
-mcp__context7__query-docs libraryId="/websites/codemirror_net" query="your query"
+bun install          # Install dependencies
+bun run dev          # Watch mode
+bun run build        # Production build (run before testing)
+bun run check        # Type check + lint + format check
+bun run fix          # Auto-fix lint/format issues
 ```
 
-### Taskdn Specification
-- Full S1-core spec: `/Users/danny/dev/taskdn/tdn-specs/S1-core.md`
-- Overview: `/Users/danny/dev/taskdn/docs/overview.md`
+**Testing locally**: Copy `main.js`, `manifest.json`, and `styles.css` to `.obsidian/plugins/taskdn/` in a vault, then reload Obsidian.
 
-## Common Pitfalls
+## Task Frontmatter Reference
 
-### Live Preview Decoration Issues
-- View plugins can't add layout-affecting decorations (block widgets, line breaks)
-- Decorations must be sorted by position before adding to `RangeSetBuilder`
-- Use `widgetClickInProgress` WeakSet to prevent decoration rebuilds during clicks
-- Check `editorLivePreviewField` to avoid rendering in Source mode
+Tasks are identified by being inside the configured `tasksDirectory` (default: `tasks/`).
 
-### Widget Click Handling
-- Widgets must call `e.stopPropagation()` on mousedown to prevent CM6 interference
-- Use `ignoreEvent()` to tell CM6 which events the widget handles
+**Required**: `title` (string), `status` (enum), `created-at`, `updated-at`
 
-### Checkbox Alignment
-- Native Obsidian tasks use 30px indent; match this with `text-indent: -30px` + `padding-inline-start: 30px`
-- Checkbox needs `task-list-item-checkbox` class for native styling
+**Optional**: `completed-at`, `area` (wikilink), `projects` (single-element array of wikilink), `due`, `scheduled`, `defer-until`
+
+**Status values**: `inbox`, `icebox`, `ready`, `in-progress`, `blocked`, `dropped`, `done`
+
+The plugin displays: title, first project, area (if no project), defer-until date, due date. Checkbox toggles between `ready` ↔ `done`.
+
+**Full spec**: See the [S1-core specification](https://github.com/dannysmith/taskdn/blob/main/tdn-specs/S1-core.md).
+
+## Visual Design
+
+| Status        | Left Border      | Opacity | Strikethrough |
+| ------------- | ---------------- | ------- | ------------- |
+| `inbox`       | `--color-blue`   | —       | —             |
+| `icebox`      | `--color-cyan`   | —       | —             |
+| `ready`       | none             | —       | —             |
+| `in-progress` | `--color-yellow` | —       | —             |
+| `blocked`     | `--color-red`    | —       | —             |
+| `dropped`     | `--color-pink`   | 0.7     | title only    |
+| `done`        | none             | 0.7     | title only    |
+
+## Architecture
+
+### Rendering Implementation
+
+As described in [Obsidian View Modes](#obsidian-view-modes), we render widgets differently depending on context:
+
+- **Live Preview** (`live-preview.ts`): CM6 `ViewPlugin` that walks the syntax tree for visible ranges, finds wikilinks, resolves them to task files, and creates `Decoration.replace()` decorations.
+- **Reading Mode** (`main.ts`): Markdown post-processor that finds `a.internal-link` elements and replaces them with widget DOM.
+
+Both share `createTaskWidget()` from `widgets/task-widget.ts`.
+
+### Two Widget Structures
+
+**Inline** (wikilink in flowing text like `See [[my-task]] for details`):
+
+- Self-contained pill with checkbox inside
+- `taskdn-inline` class isolates it from parent text-decoration
+
+**List item** (wikilink after bullet like `- [[my-task]]`):
+
+- Mimics native Obsidian checklist structure
+- Checkbox positioned outside widget with `task-list-item-checkbox` class
+- Line gets `HyperMD-task-line` class so completing strikes through the whole line
+- Wrapped in `taskdn-widget-wrapper`
+
+The `isListItem` param in `createTaskWidget()` controls which structure is used.
+
+### Key Obsidian APIs
+
+- **`metadataCache.getFileCache()`**: Read frontmatter without parsing files. Never parse YAML directly.
+- **`processFrontMatter()`**: Modify frontmatter safely. Used by `toggleTaskStatus()`.
+- **`editorLivePreviewField`**: State field to detect Live Preview vs Source mode. Only render widgets in Live Preview.
+- **`editorInfoField`**: Get the current file path for resolving relative wikilinks.
+- **`registerEditorExtension()`**: Register CM6 extensions for the editor.
+
+## Development Notes
+
+### Why ViewPlugin instead of StateField?
+
+ViewPlugin is better for performance when decorations depend only on visible content. We rebuild decorations on viewport/selection changes, which is the ViewPlugin use case. StateField would be needed if decorations had to affect content outside the viewport.
+
+### The Click Handling Problem
+
+CM6 aggressively handles mouse events on decorations. Without intervention, clicking a widget checkbox would trigger CM6's default behavior (moving cursor, selecting text).
+
+Solution:
+
+1. Widget's `ignoreEvent()` returns true for mouse events
+2. `mousedown` handler calls `e.stopPropagation()`
+3. `widgetClickInProgress` WeakSet prevents decoration rebuilds during the click (otherwise the widget would be destroyed mid-interaction)
+
+### The Checkbox Alignment Problem
+
+Native Obsidian task lines use 30px left indent. Our list-item widgets need to match this exactly so checkboxes align with native tasks.
+
+Solution in CSS:
+
+```css
+.cm-line:has(.taskdn-widget-wrapper) {
+  text-indent: -30px !important;
+  padding-inline-start: 30px !important;
+}
+```
+
+The list marker (`.cm-formatting-list`) is hidden; our checkbox takes its place.
+
+### Decoration Ordering
+
+`RangeSetBuilder` requires decorations in document order. `buildDecorations()` collects all decorations into an array, sorts by position, then adds them to the builder. Line decorations and widget decorations for the same line must both be sorted.
+
+## CSS Notes
+
+Use `/css-expert` skill for complex styling work.
+
+Key patterns in `styles.css`:
+
+- **Container queries** for responsive layout at narrow widths
+- **CSS Grid** for widget content layout (title, meta, button)
+- **`text-decoration: none`** on inline widgets to prevent strikethrough inheritance from surrounding text
+
+Obsidian CSS variables to use: `--color-blue`, `--color-yellow`, `--color-red`, `--color-cyan`, `--color-pink`, `--text-normal`, `--text-muted`, `--background-secondary`, `--text-accent`.
+
+## Documentation
+
+### Context7 Queries
+
+```
+# CodeMirror 6 (decorations, widgets, ViewPlugin, WidgetType)
+libraryId="/websites/codemirror_net"
+
+# Obsidian general help
+libraryId="/websites/help_obsidian_md"
+```
+
+### Key Obsidian Docs
+
+- [Editor Extensions](https://docs.obsidian.md/Plugins/Editor/Editor+extensions) - CM6 integration overview
+- [Decorations](https://docs.obsidian.md/Plugins/Editor/Decorations) - How to style/replace content
+- [View Plugins](https://docs.obsidian.md/Plugins/Editor/View+plugins) - Viewport-aware extensions
+- [CSS Variables](https://docs.obsidian.md/Reference/CSS+variables/Foundations/Colors) - Theme-compatible colors
+- [Plugin Guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines) - Best practices for submission
+
+### API Reference
+
+- [obsidian-api](https://github.com/obsidianmd/obsidian-api) - TypeScript definitions
+- [Sample Plugin](https://github.com/obsidianmd/obsidian-sample-plugin) - Reference implementation
+
+## Rules
+
+1. Always use `bun`, never `npm` or `pnpm`.
+2. Run `bun run build` before asking user to test locally
+3. Run `bun run check` before committing
+4. Never use `innerHTML` with user content—use `createEl()`, `createDiv()`, `createSpan()`
+5. Never use regex lookbehind assertions (breaks mobile)
+6. Access app via `this.app`, never global `app`
