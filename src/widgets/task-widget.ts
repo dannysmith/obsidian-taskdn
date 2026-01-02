@@ -2,6 +2,7 @@ import { App, TFile } from "obsidian";
 import { TaskData } from "../types";
 import {
   isDoneStatus,
+  getDataTaskValue,
   formatDateForDisplay,
   toggleTaskStatus,
   extractWikilinkTarget,
@@ -129,7 +130,7 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
   // For list items, use native-like structure with checkbox outside
   if (isListItem) {
     checkbox.className = "task-list-item-checkbox taskdn-checkbox";
-    checkbox.dataset.task = isDone ? "x" : " ";
+    checkbox.dataset.task = getDataTaskValue(taskData.status);
 
     const wrapper = document.createElement("span");
     wrapper.className = "taskdn-widget-wrapper";
@@ -153,7 +154,7 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
           const newStatus = await toggleTaskStatus(file, app);
           const newIsDone = isDoneStatus(newStatus);
           checkbox.checked = newIsDone;
-          checkbox.dataset.task = newIsDone ? "x" : " ";
+          checkbox.dataset.task = getDataTaskValue(newStatus);
           content.dataset.status = newStatus;
           wrapper.dataset.status = newStatus;
           checkbox.setAttribute(

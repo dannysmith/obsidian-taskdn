@@ -11,7 +11,11 @@ import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNodeRef } from "@lezer/common";
 import { TFile, editorInfoField, editorLivePreviewField } from "obsidian";
 import type TaskdnPlugin from "./main";
-import { resolveTaskFile, getTaskDataFromCache } from "./utils/task-utils";
+import {
+  resolveTaskFile,
+  getTaskDataFromCache,
+  getDataTaskValue,
+} from "./utils/task-utils";
 import { createTaskWidget } from "./widgets/task-widget";
 import { TaskData } from "./types";
 
@@ -177,7 +181,7 @@ function buildDecorations(
                 decoration: Decoration.line({
                   class: "HyperMD-task-line",
                   attributes: {
-                    "data-task": taskData.status === "done" ? "x" : " ",
+                    "data-task": getDataTaskValue(taskData.status),
                   },
                 }),
               });

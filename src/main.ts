@@ -4,13 +4,13 @@ import { TaskdnSettingTab } from "./settings";
 import {
   resolveTaskFile,
   getTaskDataFromCache,
+  getDataTaskValue,
   isTaskPath,
   isChecklistLine,
   extractChecklistInfo,
   sanitizeFilename,
   formatDate,
   escapeYamlString,
-  isDoneStatus,
 } from "./utils/task-utils";
 import { createTaskWidget, updateTaskWidget } from "./widgets/task-widget";
 import { taskLinkViewPlugin } from "./live-preview";
@@ -174,7 +174,7 @@ export default class TaskdnPlugin extends Plugin {
       if (isFirstInLi && parentLi) {
         // Make parent <li> behave like a native task-list-item
         parentLi.classList.add("task-list-item");
-        parentLi.dataset.task = isDoneStatus(taskData.status) ? "x" : " ";
+        parentLi.dataset.task = getDataTaskValue(taskData.status);
 
         // Remove inline class since this is a list item context
         widget.classList.remove("taskdn-inline");

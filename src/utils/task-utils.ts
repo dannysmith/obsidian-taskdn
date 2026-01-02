@@ -41,6 +41,18 @@ export function isDoneStatus(status: TaskStatus): boolean {
 }
 
 /**
+ * Get the data-task attribute value for Obsidian checkbox styling
+ * - "x" for done (checked)
+ * - "-" for dropped (cancelled)
+ * - " " for all other states (unchecked)
+ */
+export function getDataTaskValue(status: TaskStatus): string {
+  if (status === "done") return "x";
+  if (status === "dropped") return "-";
+  return " ";
+}
+
+/**
  * Check if a file path is within the tasks directory
  */
 export function isTaskPath(filePath: string, tasksDirectory: string): boolean {

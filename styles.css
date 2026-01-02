@@ -13,11 +13,15 @@
 }
 
 /* Status-based styling */
-.taskdn-widget[data-status="done"] {
+
+/* Terminal states: done and dropped get opacity + strikethrough */
+.taskdn-widget[data-status="done"],
+.taskdn-widget[data-status="dropped"] {
   opacity: 0.7;
 }
 
-.taskdn-widget[data-status="done"] .taskdn-title {
+.taskdn-widget[data-status="done"] .taskdn-title,
+.taskdn-widget[data-status="dropped"] .taskdn-title {
   text-decoration: line-through;
   color: var(--text-muted);
 }
@@ -33,13 +37,30 @@
   align-self: center;
 }
 
-.taskdn-widget[data-status="blocked"] {
-  border-left: 3px solid var(--text-warning);
+/* Status border colors */
+.taskdn-widget[data-status="inbox"] {
+  border-left: 3px solid var(--color-blue);
 }
 
-.taskdn-widget[data-status="in-progress"] {
-  border-left: 3px solid var(--text-accent);
+.taskdn-widget[data-status="icebox"] {
+  border-left: 3px solid var(--color-cyan);
 }
+
+/* ready: no border (neutral state) */
+
+.taskdn-widget[data-status="in-progress"] {
+  border-left: 3px solid var(--color-yellow);
+}
+
+.taskdn-widget[data-status="blocked"] {
+  border-left: 3px solid var(--color-red);
+}
+
+.taskdn-widget[data-status="dropped"] {
+  border-left: 3px solid var(--color-pink);
+}
+
+/* done: no border (terminal state, opacity + strikethrough is enough) */
 
 /* Checkbox */
 .taskdn-checkbox {
@@ -334,17 +355,37 @@
 }
 
 /* Status styling on wrapper */
-.taskdn-widget-wrapper[data-status="done"] {
+
+/* Terminal states: done and dropped get opacity */
+.taskdn-widget-wrapper[data-status="done"],
+.taskdn-widget-wrapper[data-status="dropped"] {
   opacity: 0.7;
 }
 
-.taskdn-widget-wrapper[data-status="blocked"] .taskdn-widget {
-  border-left: 3px solid var(--text-warning);
+/* Status border colors on wrapper */
+.taskdn-widget-wrapper[data-status="inbox"] .taskdn-widget {
+  border-left: 3px solid var(--color-blue);
 }
 
-.taskdn-widget-wrapper[data-status="in-progress"] .taskdn-widget {
-  border-left: 3px solid var(--text-accent);
+.taskdn-widget-wrapper[data-status="icebox"] .taskdn-widget {
+  border-left: 3px solid var(--color-cyan);
 }
+
+/* ready: no border (neutral state) */
+
+.taskdn-widget-wrapper[data-status="in-progress"] .taskdn-widget {
+  border-left: 3px solid var(--color-yellow);
+}
+
+.taskdn-widget-wrapper[data-status="blocked"] .taskdn-widget {
+  border-left: 3px solid var(--color-red);
+}
+
+.taskdn-widget-wrapper[data-status="dropped"] .taskdn-widget {
+  border-left: 3px solid var(--color-pink);
+}
+
+/* done: no border (terminal state, opacity + strikethrough is enough) */
 
 /* Desktop app button - hidden by default */
 .taskdn-desktop-btn {
