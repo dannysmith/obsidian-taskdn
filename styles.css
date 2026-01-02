@@ -61,8 +61,9 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5em;
-  font-size: 0.85em;
+  font-size: var(--font-ui-smaller, 0.8em);
   color: var(--text-muted);
+  opacity: 0.75;
 }
 
 /* Project link */
@@ -86,6 +87,7 @@
 
 .taskdn-project::before {
   content: "○ ";
+  font-size: 0.9em;
 }
 
 /* Area link */
@@ -109,16 +111,17 @@
 
 .taskdn-area::before {
   content: "📁 ";
+  font-size: 0.9em;
 }
 
 /* Defer-until date */
 .taskdn-defer {
   white-space: nowrap;
-  color: var(--text-muted);
 }
 
 .taskdn-defer::before {
   content: "⏳ ";
+  font-size: 0.9em;
 }
 
 /* Due date */
@@ -128,6 +131,7 @@
 
 .taskdn-due::before {
   content: "📅 ";
+  font-size: 0.9em;
 }
 
 /* Make widget look good in different contexts */
@@ -208,6 +212,12 @@
 
 .taskdn-widget-wrapper .taskdn-desktop-btn {
   grid-area: btn;
+}
+
+/* When no metadata present, simplify grid to just title + button */
+.taskdn-widget-wrapper .taskdn-widget:not(:has(.taskdn-meta)) {
+  grid-template-columns: auto auto;
+  grid-template-areas: "title btn";
 }
 
 /* Narrow mode: button moves next to title, meta drops below */
