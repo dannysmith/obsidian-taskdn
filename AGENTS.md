@@ -33,8 +33,10 @@ Aim for maximum compatibility with themes and other plugins:
 bun install          # Install dependencies
 bun run dev          # Watch mode
 bun run build        # Production build (run before testing)
-bun run check        # Type check + lint + format check
+bun run check        # Type check + lint + format + tests
 bun run fix          # Auto-fix lint/format issues
+bun run test         # Run tests once
+bun run test:watch   # Run tests in watch mode
 ```
 
 **Testing locally**: Copy `main.js`, `manifest.json`, and `styles.css` to `.obsidian/plugins/taskdn/` in a vault, then reload Obsidian.

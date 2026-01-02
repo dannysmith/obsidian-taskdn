@@ -8,8 +8,10 @@
     "dev": "node esbuild.config.mjs",
     "build": "node esbuild.config.mjs production",
     "version": "node version-bump.mjs && git add manifest.json versions.json",
-    "check": "tsc --noEmit && eslint src && prettier --check src",
-    "fix": "eslint src --fix && prettier --write src"
+    "check": "tsc --noEmit && eslint src && prettier --check src && vitest run",
+    "fix": "eslint src --fix && prettier --write src",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "keywords": [
     "obsidian",
@@ -35,7 +37,8 @@
     "obsidian": "^1.7.2",
     "prettier": "^3.7.4",
     "typescript": "^5.7.2",
-    "typescript-eslint": "^8.51.0"
+    "typescript-eslint": "^8.51.0",
+    "vitest": "^4.0.16"
   },
   "dependencies": {
     "@codemirror/language": "^6.12.1",
