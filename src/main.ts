@@ -108,7 +108,8 @@ export default class TaskdnPlugin extends Plugin {
   }
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const data = (await this.loadData()) as Partial<TaskdnSettings> | null;
+    this.settings = { ...DEFAULT_SETTINGS, ...data };
   }
 
   async saveSettings() {
@@ -211,7 +212,8 @@ export default class TaskdnPlugin extends Plugin {
 
   /**
    * Check if a link element is the first significant content in an <li>.
-   * Returns true if there's no text or other elements before the link.
+   * Returns true if there's no user text or content elements before the link.
+   * Ignores Obsidian's internal elements like .list-bullet.
    */
   private isFirstContentInLi(link: HTMLElement, li: HTMLElement): boolean {
     let node: Node | null = li.firstChild;
@@ -222,8 +224,11 @@ export default class TaskdnPlugin extends Plugin {
           return false;
         }
       } else if (node.nodeType === Node.ELEMENT_NODE) {
-        // Another element before the link means link is not first
-        return false;
+        const el = node as HTMLElement;
+        // Ignore Obsidian's list bullet marker element
+        if (!el.classList.contains("list-bullet")) {
+          return false;
+        }
       }
       node = node.nextSibling;
     }
@@ -250,7 +255,7 @@ export default class TaskdnPlugin extends Plugin {
       try {
         await this.app.vault.createFolder(tasksDir);
       } catch (err) {
-        console.error(`Taskdn: Failed to create tasks directory: ${err}`);
+        console.error("Taskdn: Failed to create tasks directory:", err);
         return;
       }
     }
@@ -275,7 +280,7 @@ updated-at: ${today}`;
     try {
       await this.app.vault.create(filePath, content);
     } catch (err) {
-      console.error(`Taskdn: Failed to create task file: ${err}`);
+      console.error("Taskdn: Failed to create task file:", err);
       return;
     }
 

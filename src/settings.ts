@@ -19,7 +19,7 @@ export class TaskdnSettingTab extends PluginSettingTab {
       .setDesc("Path to the folder containing task files (e.g., 'tasks')")
       .addText((text) =>
         text
-          .setPlaceholder("tasks")
+          .setPlaceholder("Tasks")
           .setValue(this.plugin.settings.tasksDirectory)
           .onChange(async (value) => {
             this.plugin.settings.tasksDirectory = value || "tasks";
@@ -66,7 +66,7 @@ export class TaskdnSettingTab extends PluginSettingTab {
       )
       .addTextArea((text) =>
         text
-          .setPlaceholder("# Files to ignore\narchive/*\n*-template")
+          .setPlaceholder("Files to ignore\narchive/*\n*-template")
           .setValue(this.plugin.settings.ignoredFiles.join("\n"))
           .onChange(async (value) => {
             this.plugin.settings.ignoredFiles = value

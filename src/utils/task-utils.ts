@@ -2,6 +2,21 @@ import { App, TFile, CachedMetadata } from "obsidian";
 import { TaskData, TaskStatus } from "../types";
 
 /**
+ * Expected shape of task frontmatter from Obsidian's cache
+ */
+interface TaskFrontmatter {
+  title?: string;
+  status?: string;
+  due?: string;
+  scheduled?: string;
+  "defer-until"?: string;
+  projects?: string[];
+  area?: string;
+  "completed-at"?: string;
+  "updated-at"?: string;
+}
+
+/**
  * Valid task statuses for runtime validation
  */
 const VALID_STATUSES: readonly TaskStatus[] = [
@@ -94,7 +109,7 @@ export function getTaskDataFromCache(
   file: TFile,
   cache: CachedMetadata | null
 ): TaskData {
-  const fm = cache?.frontmatter;
+  const fm = cache?.frontmatter as TaskFrontmatter | undefined;
 
   return {
     title: fm?.title ?? file.basename,
@@ -118,7 +133,8 @@ export async function toggleTaskStatus(
 ): Promise<TaskStatus> {
   let newStatus: TaskStatus = "ready";
 
-  await app.fileManager.processFrontMatter(file, (fm) => {
+  await app.fileManager.processFrontMatter(file, (frontmatter: unknown) => {
+    const fm = frontmatter as TaskFrontmatter;
     const wasDone = fm.status === "done";
     newStatus = wasDone ? "ready" : "done";
     fm.status = newStatus;
