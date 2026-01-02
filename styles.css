@@ -155,9 +155,11 @@
 
 /* Force same indent as native task lines (CodeMirror calculates 23px for list items,
    but native tasks get 30px - we need to match native tasks) */
+/* Also make this a container for container queries */
 .cm-line:has(.taskdn-widget-wrapper) {
   text-indent: -30px !important;
   padding-inline-start: 30px !important;
+  container-type: inline-size;
 }
 
 /* Hide the entire list formatting span (contains the bullet) */
@@ -183,10 +185,43 @@
   cursor: pointer;
 }
 
-/* Content: no background/padding in list context */
+/* Content: use CSS Grid for responsive reordering */
 .taskdn-widget-wrapper .taskdn-widget {
+  display: inline-grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "title meta btn";
+  align-items: baseline;
+  gap: 0.4em;
   background-color: transparent;
   padding: 0;
+}
+
+.taskdn-widget-wrapper .taskdn-title {
+  grid-area: title;
+}
+
+.taskdn-widget-wrapper .taskdn-meta {
+  grid-area: meta;
+}
+
+.taskdn-widget-wrapper .taskdn-desktop-btn {
+  grid-area: btn;
+}
+
+/* Narrow mode: button moves next to title, meta drops below */
+@container (max-width: 500px) {
+  .taskdn-widget-wrapper .taskdn-widget {
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "title btn"
+      "meta meta";
+    row-gap: 0.2em;
+  }
+
+  .taskdn-widget-wrapper .taskdn-title {
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
 }
 
 /* Status styling on wrapper */
