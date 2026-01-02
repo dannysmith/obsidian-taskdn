@@ -212,27 +212,33 @@ export default class TaskdnPlugin extends Plugin {
 
   /**
    * Check if a link element is the first significant content in an <li>.
-   * Returns true if there's no user text or content elements before the link.
-   * Ignores Obsidian's internal elements like .list-bullet.
+   * Returns true if there's no visible text content before the link.
+   * This handles various Obsidian DOM structures without needing to know
+   * specific internal class names.
    */
   private isFirstContentInLi(link: HTMLElement, li: HTMLElement): boolean {
-    let node: Node | null = li.firstChild;
-    while (node && node !== link) {
-      if (node.nodeType === Node.TEXT_NODE) {
-        // Check if text node has non-whitespace content
-        if (node.textContent && node.textContent.trim().length > 0) {
-          return false;
+    // Get all text before the link by using a TreeWalker
+    const walker = document.createTreeWalker(li, NodeFilter.SHOW_TEXT, {
+      acceptNode: (node) => {
+        // Check if this text node comes before the link in document order
+        const position = node.compareDocumentPosition(link);
+        if (position & Node.DOCUMENT_POSITION_FOLLOWING) {
+          // Link comes after this text node
+          return NodeFilter.FILTER_ACCEPT;
         }
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        const el = node as HTMLElement;
-        // Ignore Obsidian's list bullet marker element
-        if (!el.classList.contains("list-bullet")) {
-          return false;
-        }
+        return NodeFilter.FILTER_REJECT;
+      },
+    });
+
+    // Check if any text node before the link has non-whitespace content
+    let textNode: Text | null;
+    while ((textNode = walker.nextNode() as Text | null)) {
+      if (textNode.textContent && textNode.textContent.trim().length > 0) {
+        return false;
       }
-      node = node.nextSibling;
     }
-    return node === link;
+
+    return true;
   }
 
   /**
