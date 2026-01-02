@@ -154,7 +154,8 @@
 }
 
 /* Task list item: align checkbox to top when content wraps */
-.markdown-preview-view li.task-list-item:has(.taskdn-widget) {
+/* Use direct child selector to avoid matching parent items in nested lists */
+.markdown-preview-view li.task-list-item:has(> .taskdn-widget) {
   display: flex;
   align-items: flex-start;
   gap: 0.35em;
