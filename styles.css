@@ -22,6 +22,17 @@
   color: var(--text-muted);
 }
 
+/* Inline widgets: prevent text-decoration from leaking to/from parent text.
+   List item widgets should inherit line strikethrough for native-like behavior. */
+.taskdn-widget.taskdn-inline {
+  text-decoration: none;
+}
+
+/* Vertically center checkbox in inline widgets (checkboxes lack a natural baseline) */
+.taskdn-widget.taskdn-inline .taskdn-checkbox {
+  align-self: center;
+}
+
 .taskdn-widget[data-status="blocked"] {
   border-left: 3px solid var(--text-warning);
 }
@@ -37,6 +48,8 @@
   height: 1em;
   margin: 0;
   accent-color: var(--interactive-accent);
+  /* Vertically center checkbox with surrounding text for inline widgets */
+  vertical-align: middle;
 }
 
 /* Title */

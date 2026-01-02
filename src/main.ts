@@ -166,11 +166,18 @@ export default class TaskdnPlugin extends Plugin {
         taskData,
       });
 
-      // Make parent <li> behave like a native task-list-item
+      // Only treat as task list item if link is first content in <li>
+      // (i.e., immediately after bullet marker like "- [[task]]")
       const parentLi = link.closest("li");
-      if (parentLi) {
+      const isFirstInLi = parentLi && this.isFirstContentInLi(link, parentLi);
+
+      if (isFirstInLi && parentLi) {
+        // Make parent <li> behave like a native task-list-item
         parentLi.classList.add("task-list-item");
         parentLi.dataset.task = isDoneStatus(taskData.status) ? "x" : " ";
+
+        // Remove inline class since this is a list item context
+        widget.classList.remove("taskdn-inline");
 
         // Extract checkbox to match native task-list-item structure exactly
         // Native: <li class="task-list-item"><input class="task-list-item-checkbox">text</li>
@@ -186,6 +193,27 @@ export default class TaskdnPlugin extends Plugin {
 
       link.replaceWith(widget);
     });
+  }
+
+  /**
+   * Check if a link element is the first significant content in an <li>.
+   * Returns true if there's no text or other elements before the link.
+   */
+  private isFirstContentInLi(link: HTMLElement, li: HTMLElement): boolean {
+    let node: Node | null = li.firstChild;
+    while (node && node !== link) {
+      if (node.nodeType === Node.TEXT_NODE) {
+        // Check if text node has non-whitespace content
+        if (node.textContent && node.textContent.trim().length > 0) {
+          return false;
+        }
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        // Another element before the link means link is not first
+        return false;
+      }
+      node = node.nextSibling;
+    }
+    return node === link;
   }
 
   /**

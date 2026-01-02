@@ -164,20 +164,24 @@ function buildDecorations(
           // Check if there's a list marker before the link
           const { hasListMarker } = findListMarkerStart(state, linkStart);
 
-          // Add line decoration to make line behave like native task line
-          const lineStart = state.doc.lineAt(linkStart).from;
-          if (!taskLineStarts.has(lineStart)) {
-            taskLineStarts.add(lineStart);
-            decorations.push({
-              from: lineStart,
-              to: lineStart,
-              decoration: Decoration.line({
-                class: "HyperMD-task-line",
-                attributes: {
-                  "data-task": taskData.status === "done" ? "x" : " ",
-                },
-              }),
-            });
+          // Only add line decoration for actual list items (not inline task links)
+          // This makes the line behave like a native task line with proper checkbox alignment
+          // For inline links, we don't want native task line styling (like strikethrough on done)
+          if (hasListMarker) {
+            const lineStart = state.doc.lineAt(linkStart).from;
+            if (!taskLineStarts.has(lineStart)) {
+              taskLineStarts.add(lineStart);
+              decorations.push({
+                from: lineStart,
+                to: lineStart,
+                decoration: Decoration.line({
+                  class: "HyperMD-task-line",
+                  attributes: {
+                    "data-task": taskData.status === "done" ? "x" : " ",
+                  },
+                }),
+              });
+            }
           }
 
           // Replace only the wikilink, NOT the list marker
@@ -232,9 +236,10 @@ function findListMarkerStart(
   const line = state.doc.lineAt(linkStart);
   const beforeLink = line.text.slice(0, linkStart - line.from);
 
-  // Match list marker patterns: "- ", "* ", "+ ", or numbered "1. ", "2. " etc.
+  // Match bullet list markers: "- ", "* ", "+ "
+  // Only bullet lists, not numbered lists (1., 2., etc.)
   // The list marker should be at the start (after optional whitespace)
-  const listMarkerMatch = beforeLink.match(/^(\s*)([-*+]|\d+\.)\s+$/);
+  const listMarkerMatch = beforeLink.match(/^(\s*)([-*+])\s+$/);
 
   if (listMarkerMatch) {
     // Return position after leading whitespace but include the marker

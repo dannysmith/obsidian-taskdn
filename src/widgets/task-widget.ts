@@ -195,6 +195,9 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
   // Insert checkbox at the beginning of content
   content.insertBefore(checkbox, content.firstChild);
 
+  // Add inline class for CSS targeting (isolates from parent text-decoration)
+  content.classList.add("taskdn-inline");
+
   return content;
 }
 
