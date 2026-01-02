@@ -1,6 +1,6 @@
 {
   "name": "obsidian-taskdn",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "Render wikilinks to Taskdn task files as interactive checklist widgets",
   "main": "main.js",
