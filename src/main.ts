@@ -14,6 +14,7 @@ import {
 } from "./utils/task-utils";
 import { createTaskWidget, updateTaskWidget } from "./widgets/task-widget";
 import { taskLinkViewPlugin } from "./live-preview";
+import { createTaskEnterHandler } from "./enter-handler";
 
 export default class TaskdnPlugin extends Plugin {
   settings: TaskdnSettings = { ...DEFAULT_SETTINGS };
@@ -23,6 +24,7 @@ export default class TaskdnPlugin extends Plugin {
 
     this.addSettingTab(new TaskdnSettingTab(this.app, this));
     this.registerEditorExtension(taskLinkViewPlugin(this));
+    this.registerEditorExtension(createTaskEnterHandler(this));
 
     this.registerMarkdownPostProcessor(
       (element: HTMLElement, context: MarkdownPostProcessorContext) => {
