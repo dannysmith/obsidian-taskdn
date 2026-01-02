@@ -11,7 +11,8 @@
     "check": "tsc --noEmit && eslint src && prettier --check src && vitest run",
     "fix": "eslint src --fix && prettier --write src",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "release": "./scripts/release.sh"
   },
   "keywords": [
     "obsidian",
