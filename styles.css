@@ -145,15 +145,79 @@
 }
 
 /* ============================================
-   List context - align with native task items
+   Reading mode: Responsive widget in list context
    ============================================ */
 
-.markdown-preview-view li .taskdn-widget {
-  vertical-align: middle;
+/* Make the preview view a container for queries */
+.markdown-preview-view {
+  container-type: inline-size;
 }
 
-/* Reading mode: Checkbox is extracted with task-list-item-checkbox class,
-   so it inherits native positioning automatically. No hack needed. */
+/* Task list item: align checkbox to top when content wraps */
+.markdown-preview-view li.task-list-item:has(.taskdn-widget) {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35em;
+}
+
+/* Widget in reading mode uses grid like live preview */
+.markdown-preview-view li .taskdn-widget {
+  display: inline-grid;
+  grid-template-columns: auto 1fr auto;
+  grid-template-areas: "title meta btn";
+  align-items: baseline;
+  gap: 0.4em;
+}
+
+.markdown-preview-view li .taskdn-title {
+  grid-area: title;
+}
+
+.markdown-preview-view li .taskdn-meta {
+  grid-area: meta;
+}
+
+.markdown-preview-view li .taskdn-desktop-btn {
+  grid-area: btn;
+}
+
+/* When no metadata, simplify grid */
+.markdown-preview-view li .taskdn-widget:not(:has(.taskdn-meta)) {
+  grid-template-columns: auto auto;
+  grid-template-areas: "title btn";
+}
+
+/* Narrow mode: button next to title, meta below */
+@container (max-width: 450px) {
+  .markdown-preview-view li .taskdn-widget {
+    grid-template-columns: auto auto;
+    grid-template-areas:
+      "title btn"
+      "meta meta";
+    justify-content: start;
+    row-gap: 0.2em;
+  }
+
+  .markdown-preview-view li .taskdn-title {
+    overflow-wrap: break-word;
+    min-width: 0;
+  }
+
+  .markdown-preview-view li .taskdn-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3em 0.5em;
+  }
+}
+
+/* Very narrow: stack meta items vertically */
+@container (max-width: 280px) {
+  .markdown-preview-view li .taskdn-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15em;
+  }
+}
 
 /* ============================================
    Live Preview: Native-like checkbox structure
@@ -198,8 +262,10 @@
   grid-template-areas: "title meta btn";
   align-items: baseline;
   gap: 0.4em;
-  background-color: transparent;
-  padding: 0;
+  /* Match reading mode: subtle background with rounded corners */
+  background-color: var(--background-secondary);
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
 }
 
 .taskdn-widget-wrapper .taskdn-title {
