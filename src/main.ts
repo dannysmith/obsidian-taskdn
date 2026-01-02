@@ -11,6 +11,7 @@ import {
   sanitizeFilename,
   formatDate,
   escapeYamlString,
+  isIgnoredFile,
 } from "./utils/task-utils";
 import { createTaskWidget, updateTaskWidget } from "./widgets/task-widget";
 import { taskLinkViewPlugin } from "./live-preview";
@@ -158,6 +159,17 @@ export default class TaskdnPlugin extends Plugin {
       );
 
       if (!file) return;
+
+      // Check if file is in the ignore list
+      if (
+        isIgnoredFile(
+          file,
+          this.settings.tasksDirectory,
+          this.settings.ignoredFiles
+        )
+      ) {
+        return;
+      }
 
       const cache = this.app.metadataCache.getFileCache(file);
       const taskData = getTaskDataFromCache(file, cache);

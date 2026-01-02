@@ -31,10 +31,12 @@ export interface TaskdnSettings {
   tasksDirectory: string;
   defaultStatus: TaskStatus;
   showDesktopAppButton: boolean;
+  ignoredFiles: string[];
 }
 
 export const DEFAULT_SETTINGS: TaskdnSettings = {
   tasksDirectory: "tasks",
   defaultStatus: "inbox",
   showDesktopAppButton: false,
+  ignoredFiles: [],
 };

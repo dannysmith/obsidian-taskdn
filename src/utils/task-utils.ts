@@ -276,3 +276,93 @@ export function escapeYamlString(text: string): string {
     .replace(/\r/g, "\\r")
     .replace(/\t/g, "\\t");
 }
+
+/**
+ * Check if a task file should be ignored based on ignore patterns.
+ *
+ * Pattern format:
+ * - Lines starting with # are comments
+ * - Patterns with / match against path relative to tasks directory
+ * - Patterns without / match against filename
+ * - * is a wildcard matching any characters
+ * - Matching is case-insensitive
+ *
+ * Examples:
+ * - "template" matches any file named "template.md"
+ * - "archive/*" matches all files in the archive subfolder
+ * - "*-template" matches files ending with "-template.md"
+ */
+export function isIgnoredFile(
+  file: TFile,
+  tasksDirectory: string,
+  patterns: string[]
+): boolean {
+  if (patterns.length === 0) return false;
+
+  // Get path relative to tasks directory
+  const tasksDir = tasksDirectory.endsWith("/")
+    ? tasksDirectory
+    : tasksDirectory + "/";
+  const relativePath = file.path.startsWith(tasksDir)
+    ? file.path.slice(tasksDir.length)
+    : file.path;
+
+  const fileName = file.name; // includes .md
+  const baseName = file.basename; // without .md
+
+  return patterns.some((pattern) => {
+    const trimmed = pattern.trim();
+    // Skip empty lines and comments
+    if (!trimmed || trimmed.startsWith("#")) return false;
+
+    return matchesIgnorePattern(relativePath, fileName, baseName, trimmed);
+  });
+}
+
+/**
+ * Check if a file matches a single ignore pattern
+ */
+function matchesIgnorePattern(
+  relativePath: string,
+  fileName: string,
+  baseName: string,
+  pattern: string
+): boolean {
+  // Determine what to match against based on whether pattern contains /
+  const hasSlash = pattern.includes("/");
+
+  if (!pattern.includes("*")) {
+    // Exact matching (no wildcards)
+    if (hasSlash) {
+      // Match against relative path
+      return (
+        relativePath.toLowerCase() === pattern.toLowerCase() ||
+        relativePath.toLowerCase() === pattern.toLowerCase() + ".md"
+      );
+    } else {
+      // Match against filename or basename
+      return (
+        fileName.toLowerCase() === pattern.toLowerCase() ||
+        baseName.toLowerCase() === pattern.toLowerCase() ||
+        fileName.toLowerCase() === pattern.toLowerCase() + ".md"
+      );
+    }
+  }
+
+  // Wildcard matching - convert glob to regex
+  const regexStr = pattern
+    .replace(/[.+?^${}()|[\]\\]/g, "\\$&") // Escape special regex chars
+    .replace(/\*/g, ".*"); // * becomes .*
+
+  const regex = new RegExp(`^${regexStr}$`, "i");
+
+  if (hasSlash) {
+    // Match against relative path (with or without .md)
+    return (
+      regex.test(relativePath) || regex.test(relativePath.replace(/\.md$/, ""))
+    );
+  } else {
+    // Match against filename or basename
+    return regex.test(fileName) || regex.test(baseName);
+  }
+}

@@ -15,6 +15,7 @@ import {
   resolveTaskFile,
   getTaskDataFromCache,
   getDataTaskValue,
+  isIgnoredFile,
 } from "./utils/task-utils";
 import { createTaskWidget } from "./widgets/task-widget";
 import { TaskData } from "./types";
@@ -161,6 +162,17 @@ function buildDecorations(
           );
 
           if (!taskFile) return;
+
+          // Check if file is in the ignore list
+          if (
+            isIgnoredFile(
+              taskFile,
+              plugin.settings.tasksDirectory,
+              plugin.settings.ignoredFiles
+            )
+          ) {
+            return;
+          }
 
           const cache = plugin.app.metadataCache.getFileCache(taskFile);
           const taskData = getTaskDataFromCache(taskFile, cache);

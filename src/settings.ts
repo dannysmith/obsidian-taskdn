@@ -56,5 +56,25 @@ export class TaskdnSettingTab extends PluginSettingTab {
             this.plugin.updateDesktopButtonClasses();
           })
       );
+
+    new Setting(containerEl)
+      .setName("Ignored files")
+      .setDesc(
+        "Task files to exclude from widget rendering (one pattern per line). " +
+          "Paths are relative to the tasks directory. Use * as wildcard. " +
+          "Example: archive/* or *-template"
+      )
+      .addTextArea((text) =>
+        text
+          .setPlaceholder("# Files to ignore\narchive/*\n*-template")
+          .setValue(this.plugin.settings.ignoredFiles.join("\n"))
+          .onChange(async (value) => {
+            this.plugin.settings.ignoredFiles = value
+              .split("\n")
+              .map((line) => line.trim())
+              .filter((line) => line.length > 0);
+            await this.plugin.saveSettings();
+          })
+      );
   }
 }
