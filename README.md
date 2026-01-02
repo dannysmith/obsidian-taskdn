@@ -4,8 +4,7 @@ An Obsidian plugin for [Taskdn](https://github.com/dannysmith/taskdn), a file-ba
 
 Taskdn keeps everything as plain files on disk, so you can work with your tasks in Obsidian, the Taskdn desktop app, CLI tools, or AI agents. This plugin turns wikilinks to task files into interactive widgets.
 
-<!-- TODO: Add screenshot -->
-![Screenshot placeholder](https://via.placeholder.com/800x400?text=Screenshot+coming+soon)
+<img width="808" height="335" alt="Screenshot 2026-01-02 at 06 06 28" src="https://github.com/user-attachments/assets/82ec1e7a-7b8d-4230-9264-4e135fd214ed" />
 
 ## Features
 
