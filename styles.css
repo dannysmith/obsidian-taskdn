@@ -37,30 +37,43 @@
   align-self: center;
 }
 
-/* Status border colors */
-.taskdn-widget[data-status="inbox"] {
-  border-left: 3px solid var(--color-blue);
+/* Status border colors (standalone widget and wrapper contexts) */
+/* ready and done: no border */
+
+:is(
+  .taskdn-widget[data-status="inbox"],
+  .taskdn-widget-wrapper[data-status="inbox"] .taskdn-widget
+) {
+  border-inline-start: 3px solid var(--color-blue);
 }
 
-.taskdn-widget[data-status="icebox"] {
-  border-left: 3px solid var(--color-cyan);
+:is(
+  .taskdn-widget[data-status="icebox"],
+  .taskdn-widget-wrapper[data-status="icebox"] .taskdn-widget
+) {
+  border-inline-start: 3px solid var(--color-cyan);
 }
 
-/* ready: no border (neutral state) */
-
-.taskdn-widget[data-status="in-progress"] {
-  border-left: 3px solid var(--color-yellow);
+:is(
+  .taskdn-widget[data-status="in-progress"],
+  .taskdn-widget-wrapper[data-status="in-progress"] .taskdn-widget
+) {
+  border-inline-start: 3px solid var(--color-yellow);
 }
 
-.taskdn-widget[data-status="blocked"] {
-  border-left: 3px solid var(--color-red);
+:is(
+  .taskdn-widget[data-status="blocked"],
+  .taskdn-widget-wrapper[data-status="blocked"] .taskdn-widget
+) {
+  border-inline-start: 3px solid var(--color-red);
 }
 
-.taskdn-widget[data-status="dropped"] {
-  border-left: 3px solid var(--color-pink);
+:is(
+  .taskdn-widget[data-status="dropped"],
+  .taskdn-widget-wrapper[data-status="dropped"] .taskdn-widget
+) {
+  border-inline-start: 3px solid var(--color-pink);
 }
-
-/* done: no border (terminal state, opacity + strikethrough is enough) */
 
 /* Checkbox */
 .taskdn-checkbox {
@@ -84,7 +97,8 @@
   text-decoration: underline;
 }
 
-.taskdn-title:focus {
+/* Shared focus styles for interactive elements */
+:is(.taskdn-title, .taskdn-project, .taskdn-area):focus {
   outline: 2px solid var(--text-accent);
   outline-offset: 2px;
   border-radius: 2px;
@@ -100,23 +114,17 @@
   opacity: 0.75;
 }
 
-/* Project link */
-.taskdn-project {
+/* Project and area links */
+:is(.taskdn-project, .taskdn-area) {
   cursor: pointer;
   color: var(--text-accent);
   opacity: 0.8;
   white-space: nowrap;
 }
 
-.taskdn-project:hover {
+:is(.taskdn-project, .taskdn-area):hover {
   opacity: 1;
   text-decoration: underline;
-}
-
-.taskdn-project:focus {
-  outline: 2px solid var(--text-accent);
-  outline-offset: 2px;
-  border-radius: 2px;
 }
 
 .taskdn-project::before {
@@ -124,32 +132,13 @@
   font-size: 0.9em;
 }
 
-/* Area link */
-.taskdn-area {
-  cursor: pointer;
-  color: var(--text-accent);
-  opacity: 0.8;
-  white-space: nowrap;
-}
-
-.taskdn-area:hover {
-  opacity: 1;
-  text-decoration: underline;
-}
-
-.taskdn-area:focus {
-  outline: 2px solid var(--text-accent);
-  outline-offset: 2px;
-  border-radius: 2px;
-}
-
 .taskdn-area::before {
   content: "📁 ";
   font-size: 0.9em;
 }
 
-/* Defer-until date */
-.taskdn-defer {
+/* Date indicators */
+:is(.taskdn-defer, .taskdn-due) {
   white-space: nowrap;
 }
 
@@ -158,23 +147,17 @@
   font-size: 0.9em;
 }
 
-/* Due date */
-.taskdn-due {
-  white-space: nowrap;
-}
-
 .taskdn-due::before {
   content: "📅 ";
   font-size: 0.9em;
 }
 
 /* Make widget look good in different contexts */
-.markdown-preview-view .taskdn-widget {
+:is(.markdown-preview-view, .cm-line) .taskdn-widget {
   margin: 0 0.1em;
 }
 
 .cm-line .taskdn-widget {
-  margin: 0 0.1em;
   vertical-align: middle;
 }
 
@@ -362,38 +345,13 @@
   opacity: 0.7;
 }
 
-/* Status border colors on wrapper */
-.taskdn-widget-wrapper[data-status="inbox"] .taskdn-widget {
-  border-left: 3px solid var(--color-blue);
-}
-
-.taskdn-widget-wrapper[data-status="icebox"] .taskdn-widget {
-  border-left: 3px solid var(--color-cyan);
-}
-
-/* ready: no border (neutral state) */
-
-.taskdn-widget-wrapper[data-status="in-progress"] .taskdn-widget {
-  border-left: 3px solid var(--color-yellow);
-}
-
-.taskdn-widget-wrapper[data-status="blocked"] .taskdn-widget {
-  border-left: 3px solid var(--color-red);
-}
-
-.taskdn-widget-wrapper[data-status="dropped"] .taskdn-widget {
-  border-left: 3px solid var(--color-pink);
-}
-
-/* done: no border (terminal state, opacity + strikethrough is enough) */
-
 /* Desktop app button - hidden by default */
 .taskdn-desktop-btn {
   display: none;
   cursor: pointer;
   font-size: 0.75em;
   opacity: 0.4;
-  margin-left: 0.25em;
+  margin-inline-start: 0.25em;
 }
 
 .taskdn-desktop-btn:hover {
