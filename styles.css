@@ -368,7 +368,56 @@ body.taskdn-show-desktop-btn .taskdn-desktop-btn {
    Task View Indicator (Inline Title Feature)
    ============================================ */
 
-/* Subtle left border on task file views */
-.workspace-leaf-content.taskdn-task-view {
-  border-left: 2px solid var(--background-modifier-border);
+/* Status-based left border on task file views */
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="inbox"] {
+  border-left: 2px solid var(--color-blue);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="icebox"] {
+  border-left: 2px solid var(--color-cyan);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="ready"] {
+  border-left: 2px solid var(--color-green);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="in-progress"] {
+  border-left: 2px solid var(--color-yellow);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="blocked"] {
+  border-left: 2px solid var(--color-red);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="dropped"] {
+  border-left: 2px solid var(--color-pink);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="done"] {
+  border-left: 2px solid var(--color-green);
+}
+
+/* Hide native inline title when our custom one is present */
+.taskdn-task-view .inline-title {
+  display: none;
+}
+
+/* Custom inline title - match native Obsidian styling */
+.taskdn-inline-title {
+  font-size: var(--inline-title-size);
+  font-weight: var(--inline-title-weight);
+  font-style: var(--inline-title-style);
+  font-variant: var(--inline-title-variant);
+  font-family: var(--inline-title-font);
+  letter-spacing: var(--inline-title-letter-spacing);
+  line-height: var(--inline-title-line-height);
+  color: var(--inline-title-color);
+  margin-block-end: var(--inline-title-margin-bottom);
+  outline: none;
+}
+
+/* Empty title placeholder */
+.taskdn-inline-title:empty::before {
+  content: "Untitled";
+  color: var(--text-faint);
 }
