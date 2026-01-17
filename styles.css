@@ -397,27 +397,3 @@ body.taskdn-show-desktop-btn .taskdn-desktop-btn {
   border-left: 2px solid var(--color-green);
 }
 
-/* Hide native inline title when our custom one is present */
-.taskdn-task-view .inline-title {
-  display: none;
-}
-
-/* Custom inline title - match native Obsidian styling */
-.taskdn-inline-title {
-  font-size: var(--inline-title-size);
-  font-weight: var(--inline-title-weight);
-  font-style: var(--inline-title-style);
-  font-variant: var(--inline-title-variant);
-  font-family: var(--inline-title-font);
-  letter-spacing: var(--inline-title-letter-spacing);
-  line-height: var(--inline-title-line-height);
-  color: var(--inline-title-color);
-  margin-block-end: var(--inline-title-margin-bottom);
-  outline: none;
-}
-
-/* Empty title placeholder */
-.taskdn-inline-title:empty::before {
-  content: "Untitled";
-  color: var(--text-faint);
-}
