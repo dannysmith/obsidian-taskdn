@@ -39,8 +39,6 @@ bun run test         # Run tests once
 bun run test:watch   # Run tests in watch mode
 ```
 
-**Testing locally**: Copy `main.js`, `manifest.json`, and `styles.css` to `.obsidian/plugins/taskdn/` in a vault, then reload Obsidian.
-
 ## Releasing
 
 Run `bun run release` to create a new release. The script will:
@@ -149,8 +147,6 @@ The list marker (`.cm-formatting-list`) is hidden; our checkbox takes its place.
 `RangeSetBuilder` requires decorations in document order. `buildDecorations()` collects all decorations into an array, sorts by position, then adds them to the builder. Line decorations and widget decorations for the same line must both be sorted.
 
 ## CSS Notes
-
-Use `/css-expert` skill for complex styling work.
 
 Key patterns in `styles.css`:
 

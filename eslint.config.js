@@ -29,6 +29,6 @@ export default defineConfig(
     },
   },
   {
-    ignores: ["main.js", "*.config.js", "*.config.mjs"],
+    ignores: ["main.js", "*.config.js", "*.config.mjs", "*.config.ts", "*.mjs"],
   }
 );
