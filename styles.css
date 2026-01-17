@@ -363,3 +363,12 @@
 body.taskdn-show-desktop-btn .taskdn-desktop-btn {
   display: inline;
 }
+
+/* ============================================
+   Task View Indicator (Inline Title Feature)
+   ============================================ */
+
+/* Subtle left border on task file views */
+.workspace-leaf-content.taskdn-task-view {
+  border-left: 2px solid var(--background-modifier-border);
+}

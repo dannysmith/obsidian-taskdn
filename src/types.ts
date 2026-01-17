@@ -32,6 +32,8 @@ export interface TaskdnSettings {
   defaultStatus: TaskStatus;
   showDesktopAppButton: boolean;
   ignoredFiles: string[];
+  useTaskTitleAsInlineTitle: boolean;
+  syncFilenameWithTaskTitle: boolean;
 }
 
 export const DEFAULT_SETTINGS: TaskdnSettings = {
@@ -39,4 +41,6 @@ export const DEFAULT_SETTINGS: TaskdnSettings = {
   defaultStatus: "inbox",
   showDesktopAppButton: false,
   ignoredFiles: [],
+  useTaskTitleAsInlineTitle: false,
+  syncFilenameWithTaskTitle: false,
 };
