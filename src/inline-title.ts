@@ -1,6 +1,10 @@
-import { MarkdownView, TFile } from "obsidian";
+import { MarkdownView, TFile, Notice } from "obsidian";
 import type TaskdnPlugin from "./main";
-import { isValidTaskFile, formatDate } from "./utils/task-utils";
+import {
+  isValidTaskFile,
+  formatDate,
+  titleToKebabCase,
+} from "./utils/task-utils";
 
 const TASK_VIEW_CLASS = "taskdn-task-view";
 
@@ -191,7 +195,7 @@ function setupNativeTitleInterception(
 }
 
 /**
- * Save the title to frontmatter
+ * Save the title to frontmatter, and optionally rename the file to match.
  */
 async function saveTitle(
   plugin: TaskdnPlugin,
@@ -205,12 +209,84 @@ async function saveTitle(
       return;
     }
 
+    // Update frontmatter title
     await plugin.app.fileManager.processFrontMatter(file, (fm: unknown) => {
       const frontmatter = fm as { title?: string; "updated-at"?: string };
       frontmatter.title = newTitle;
       frontmatter["updated-at"] = formatDate(new Date());
     });
+
+    // Optionally rename file to match title
+    if (plugin.settings.syncFilenameWithTaskTitle) {
+      await renameFileToMatchTitle(plugin, file, newTitle);
+    }
   } catch (error) {
     console.error("Taskdn: Error saving title:", error);
+  }
+}
+
+/**
+ * Rename the file to match the given title (kebab-case).
+ * Handles conflicts by appending a number.
+ */
+async function renameFileToMatchTitle(
+  plugin: TaskdnPlugin,
+  file: TFile,
+  title: string
+): Promise<void> {
+  // Don't rename if title is empty
+  const newBasename = titleToKebabCase(title);
+  if (!newBasename) {
+    return;
+  }
+
+  // Skip if basename already matches
+  if (file.basename === newBasename) {
+    return;
+  }
+
+  // Construct the new path
+  const parentPath = file.parent?.path ?? "";
+  const newPath = parentPath
+    ? `${parentPath}/${newBasename}.md`
+    : `${newBasename}.md`;
+
+  // Check if a file already exists at the new path
+  const existingFile = plugin.app.vault.getAbstractFileByPath(newPath);
+  if (existingFile) {
+    // Try adding a number suffix to find a unique name
+    let counter = 2;
+    let uniquePath: string;
+    do {
+      const uniqueBasename = `${newBasename}-${counter}`;
+      uniquePath = parentPath
+        ? `${parentPath}/${uniqueBasename}.md`
+        : `${uniqueBasename}.md`;
+      counter++;
+    } while (
+      plugin.app.vault.getAbstractFileByPath(uniquePath) &&
+      counter < 100
+    );
+
+    if (counter >= 100) {
+      new Notice("Could not rename file: too many files with similar names");
+      return;
+    }
+
+    try {
+      await plugin.app.fileManager.renameFile(file, uniquePath);
+    } catch (error) {
+      console.error("Taskdn: Error renaming file:", error);
+      new Notice("Error renaming file");
+    }
+    return;
+  }
+
+  // No conflict, rename directly
+  try {
+    await plugin.app.fileManager.renameFile(file, newPath);
+  } catch (error) {
+    console.error("Taskdn: Error renaming file:", error);
+    new Notice("Error renaming file");
   }
 }

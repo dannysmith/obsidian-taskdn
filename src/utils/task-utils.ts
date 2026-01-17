@@ -308,6 +308,35 @@ export function sanitizeFilename(text: string): string {
 }
 
 /**
+ * Convert a title to kebab-case for use as a filename.
+ * - Converts to lowercase
+ * - Replaces spaces with hyphens
+ * - Removes/replaces special characters
+ * - Trims leading/trailing hyphens
+ * - Limits length to 100 characters
+ *
+ * Returns null if the title would result in an empty filename.
+ */
+export function titleToKebabCase(title: string): string | null {
+  const kebab = title
+    .toLowerCase()
+    .trim()
+    // Replace common punctuation and special chars with hyphens
+    .replace(/[\]\\/:*?"<>|''"",;:!@#$%^&*()+=[{}]/g, "-")
+    // Replace whitespace with hyphens
+    .replace(/\s+/g, "-")
+    // Collapse multiple hyphens into one
+    .replace(/-+/g, "-")
+    // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, "")
+    // Limit length
+    .slice(0, 100);
+
+  // Return null if empty (would result in invalid filename)
+  return kebab.length > 0 ? kebab : null;
+}
+
+/**
  * Extract wikilink text from a string (e.g., "[[My Task]]" -> "My Task")
  */
 export function extractWikilinkTarget(text: string): string | null {
