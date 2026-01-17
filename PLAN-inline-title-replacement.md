@@ -144,96 +144,45 @@ The plugin already uses `app.fileManager.processFrontMatter()` in `toggleTaskSta
 
 ## Implementation Approach
 
-**Strategy: CSS Hide + Custom Element**
+**Strategy: Event Interception on Native Element**
 
-Rather than trying to intercept Obsidian's native title editing behavior (which would require monkey-patching undocumented methods), we will:
+We initially planned to hide the native `.inline-title` and create a custom element, but this didn't work—the custom element wasn't receiving focus/blur events properly.
 
-1. Hide the native `.inline-title` element via CSS for valid task files
-2. Insert a custom contenteditable element that looks identical
-3. Wire up our own input/blur handlers to update frontmatter
-4. Sync display when frontmatter changes from other sources
+**Final approach:** Intercept events directly on the native `.inline-title` element using the **capture phase**:
+
+1. Attach event listeners with `addEventListener(..., { capture: true })` to catch events before Obsidian's handlers
+2. On blur, call `e.stopPropagation()` and `e.preventDefault()` to prevent Obsidian's file rename behavior
+3. Update the native element's `textContent` directly to show the frontmatter title
+4. Save to frontmatter using `processFrontMatter()` on blur
 
 This approach:
-- Avoids fighting Obsidian's native file rename behavior
-- Uses standard DOM APIs
-- Is more resilient to Obsidian updates
-- Follows patterns already established in the codebase
+- Works reliably with Obsidian's DOM
+- Doesn't require creating/managing a separate element
+- Uses capture phase to intercept before Obsidian processes events
+- Keeps the native element's styling and behavior intact
 
 ---
 
 ## Phased Implementation Plan
 
-### Phase 1: Detection and Read-Only Display
+### Phase 1: Detection and Read-Only Display ✅ COMPLETE
 
 **Goal**: Display the task title instead of filename, without editing support. Add the visual indicator.
 
 **Deliverable**: When viewing a valid task file with feature enabled, the `title` field appears instead of the filename, and a subtle left border indicates it's a task file.
 
-#### Tasks
+#### What Was Implemented
 
-1. **Add helper function to validate task files**
-
-   Create or update utility function that checks all validity criteria:
-   ```typescript
-   function isValidTaskFile(file: TFile, app: App, settings: TaskdnSettings): boolean {
-     // 1. Check if in tasks directory
-     // 2. Check if NOT in ignore list
-     // 3. Check if has 'title' field in frontmatter (including empty string)
-     // 4. Check if has 'status' field in frontmatter
-   }
-   ```
-
-2. **Add settings to types.ts**
-   ```typescript
-   interface TaskdnSettings {
-     // ... existing
-     useTaskTitleAsInlineTitle: boolean;  // default: false
-     syncFilenameWithTaskTitle: boolean;  // default: false
-   }
-   ```
-
-3. **Add settings UI in settings.ts**
-   - "Use task title as inline title" - only show if `app.vault.config?.showInlineTitle` is true
-   - "Sync filename with task title" - only show if above setting is ON
-   - Include clear descriptions explaining the behavior
-
-4. **Create new file `src/inline-title.ts`**
-   - Export function `setupInlineTitleReplacement(plugin: TaskdnPlugin)`
-   - Register workspace event listeners (`active-leaf-change`, `layout-change`)
-   - Implement `processViewForTaskTitle(view: MarkdownView)`
-
-5. **Implement title replacement logic**
-   ```
-   For each MarkdownView:
-     - Get the file from the view
-     - Check if isValidTaskFile()
-     - If not valid: ensure no taskdn classes, return (native behavior)
-     - If valid:
-       - Add class to view container: 'taskdn-task-view'
-       - Find .inline-title element
-       - Set its textContent to the task's title from frontmatter
-       - (Phase 1: leave it non-editable or let native editing happen)
-   ```
-
-6. **Add CSS for visual indicator**
-   ```css
-   /* Subtle left border on task file views */
-   .workspace-leaf-content:has(.taskdn-task-view) {
-     border-left: 2px solid var(--color-accent);
-     /* Or use a very subtle, semi-transparent color */
-   }
-   ```
-
-7. **Wire up in main.ts**
-   - Call `setupInlineTitleReplacement(this)` in `onload()`
-
-8. **Handle metadata changes**
-   - Listen to `metadataCache.on('changed')` for task files
-   - Update displayed title when frontmatter changes
+1. **`isValidTaskFile()` helper** in `src/utils/task-utils.ts` - checks all validity criteria
+2. **Settings** in `types.ts`: `useTaskTitleAsInlineTitle` and `syncFilenameWithTaskTitle`
+3. **Settings UI** in `settings.ts` - conditional display based on Obsidian's "Show inline title" setting
+4. **`src/inline-title.ts`** - main implementation with `setupInlineTitleReplacement()`
+5. **Status-based border colors** - border color matches task status (blue=inbox, cyan=icebox, green=ready/done, yellow=in-progress, red=blocked, pink=dropped)
+6. **Wired up** in `main.ts`
 
 #### Testing Phase 1
 
-- [ ] Valid task file with feature ON → shows `title` field, has left border accent
+- [ ] Valid task file with feature ON → shows `title` field, has status-colored left border
 - [ ] Valid task file with feature OFF → shows filename (native), no border
 - [ ] File missing `title` field → shows filename (native), no border
 - [ ] File missing `status` field → shows filename (native), no border
@@ -242,47 +191,27 @@ This approach:
 - [ ] Task with empty `title: ""` → shows empty title area, has border
 - [ ] Edit title in Properties panel → inline title updates
 - [ ] Multiple tabs with same task → all update correctly
-- [ ] Left border is subtle and doesn't clash with themes
+- [ ] Border colors match status correctly
 
 ---
 
-### Phase 2: Editable Title (Frontmatter Sync)
+### Phase 2: Editable Title (Frontmatter Sync) ✅ COMPLETE
 
 **Goal**: Allow editing the inline title, with changes updating the frontmatter `title` field.
 
 **Deliverable**: Clicking and editing the title updates frontmatter. Pressing Enter or clicking away saves. Escape cancels.
 
-#### Tasks
+#### What Was Implemented
 
-1. **Prevent native editing behavior**
-   - Replace native `.inline-title` with our own element (or intercept events)
-   - Our element should have same attributes: `contenteditable="true"`, etc.
+Used **event interception on the native element** (not a custom element):
 
-2. **Implement custom contenteditable handling**
-   - On focus: Store original value for cancel/comparison
-   - On input: Update display (don't save yet)
-   - On blur: Save to frontmatter if changed
-   - On Enter key: Save and blur
-   - On Escape key: Restore original value and blur
+1. **`setupNativeTitleInterception()`** - attaches capture-phase event listeners to native `.inline-title`
+2. **Focus handler** - stores original value, adds to `editingElements` WeakSet
+3. **Blur handler** - compares values, calls `stopPropagation()`/`preventDefault()` to block Obsidian's file rename, saves via `processFrontMatter()`
+4. **Keydown handler** - Enter saves and blurs, Escape reverts and blurs
+5. **`saveTitle()`** - updates frontmatter `title` and `updated-at` fields
 
-3. **Create `updateTaskTitle(file: TFile, newTitle: string)` utility**
-   ```typescript
-   async function updateTaskTitle(file: TFile, newTitle: string, app: App): Promise<void> {
-     await app.fileManager.processFrontMatter(file, (fm) => {
-       fm.title = newTitle;
-       fm['updated-at'] = new Date().toISOString();
-     });
-   }
-   ```
-
-4. **Handle edge cases**
-   - Empty title: Allow it (valid per requirements)
-   - Same title as before: Don't trigger unnecessary save
-   - File deleted while editing: Handle gracefully (check file exists before save)
-
-5. **Sync with external changes**
-   - If title changes in frontmatter while user is NOT focused on inline title, update display
-   - If user IS focused/editing, don't interrupt them
+Key insight: Using `addEventListener(..., true)` (capture phase) allows us to intercept events before Obsidian's handlers process them.
 
 #### Testing Phase 2
 
@@ -402,64 +331,48 @@ This approach:
 
 ## Technical Notes
 
-### Type Extensions
-
-We'll need to extend Obsidian types for the undocumented APIs:
-
-```typescript
-// src/obsidian-extensions.d.ts
-
-declare module 'obsidian' {
-  interface Vault {
-    config?: {
-      showInlineTitle?: boolean;
-    };
-  }
-}
-```
-
-### File Structure
+### File Structure (Actual)
 
 ```
 src/
-├── main.ts                    # Add setupInlineTitleReplacement call
-├── types.ts                   # Add new settings
-├── settings.ts                # Add conditional settings UI
-├── inline-title.ts            # NEW: All inline title replacement logic
-├── obsidian-extensions.d.ts   # NEW: Type extensions for undocumented APIs
+├── main.ts                    # Calls setupInlineTitleReplacement()
+├── types.ts                   # Added useTaskTitleAsInlineTitle, syncFilenameWithTaskTitle
+├── settings.ts                # Conditional settings UI
+├── inline-title.ts            # All inline title replacement logic
 └── utils/
-    └── task-utils.ts          # Add isValidTaskFile, updateTaskTitle
+    └── task-utils.ts          # Added isValidTaskFile()
 ```
 
-### CSS Structure
+Note: No `obsidian-extensions.d.ts` needed—we use `// eslint-disable` comments for the undocumented `vault.config` API.
+
+### CSS Structure (Actual)
 
 ```css
-/* Visual indicator: subtle left border on task views */
-.workspace-leaf-content.taskdn-task-view {
-  border-left: 2px solid var(--background-modifier-border);
-  /* Or even more subtle: */
-  /* border-left: 2px solid rgba(var(--color-accent-rgb), 0.3); */
+/* Status-based left border on task file views */
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="inbox"] {
+  border-left: 2px solid var(--color-blue);
 }
-
-/* Hide native inline title when our replacement is active */
-.taskdn-task-view .inline-title {
-  display: none;
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="icebox"] {
+  border-left: 2px solid var(--color-cyan);
 }
-
-/* Our custom inline title element */
-.taskdn-inline-title {
-  /* Inherit all styles from native .inline-title */
-  /* Use CSS variables for theme compatibility */
-  font-size: var(--inline-title-size);
-  font-weight: var(--inline-title-weight);
-  font-style: var(--inline-title-style);
-  font-variant: var(--inline-title-variant);
-  font-family: var(--inline-title-font);
-  letter-spacing: var(--inline-title-letter-spacing);
-  line-height: var(--inline-title-line-height);
-  color: var(--inline-title-color);
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="ready"] {
+  border-left: 2px solid var(--color-green);
+}
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="in-progress"] {
+  border-left: 2px solid var(--color-yellow);
+}
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="blocked"] {
+  border-left: 2px solid var(--color-red);
+}
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="dropped"] {
+  border-left: 2px solid var(--color-pink);
+}
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="done"] {
+  border-left: 2px solid var(--color-green);
 }
 ```
+
+Note: No custom element CSS needed—we use the native `.inline-title` element directly.
 
 ---
 

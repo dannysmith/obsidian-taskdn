@@ -1,8 +1,6 @@
-import { MarkdownView, TFile, Notice } from "obsidian";
+import { MarkdownView, TFile } from "obsidian";
 import type TaskdnPlugin from "./main";
 import { isValidTaskFile, formatDate } from "./utils/task-utils";
-
-const DEBUG = true;
 
 const TASK_VIEW_CLASS = "taskdn-task-view";
 
@@ -89,7 +87,6 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
 
   // Early exit if feature disabled or no file
   if (!plugin.settings.useTaskTitleAsInlineTitle || !file) {
-    // Clean up any setup we did
     if (nativeTitleEl) {
       delete nativeTitleEl.dataset.taskdnSetup;
       delete nativeTitleEl.dataset.filePath;
@@ -99,7 +96,6 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
 
   // Check if this is a valid task file
   if (!isValidTaskFile(file, plugin.app, plugin.settings)) {
-    // Clean up any setup we did
     if (nativeTitleEl) {
       delete nativeTitleEl.dataset.taskdnSetup;
       delete nativeTitleEl.dataset.filePath;
@@ -115,15 +111,11 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
   const title = typeof fm?.title === "string" ? fm.title : "";
   const status = typeof fm?.status === "string" ? fm.status : "inbox";
 
-  if (!nativeTitleEl) {
-    if (DEBUG) console.debug("Taskdn: No native inline title found");
-    return;
-  }
+  if (!nativeTitleEl) return;
 
   // Set up our event handlers on the native element (if not already done)
   if (!nativeTitleEl.dataset.taskdnSetup) {
-    if (DEBUG) console.debug("Taskdn: Setting up native title interception");
-    setupNativeTitleInterception(plugin, nativeTitleEl, file.path);
+    setupNativeTitleInterception(plugin, nativeTitleEl);
     nativeTitleEl.dataset.taskdnSetup = "true";
   }
 
@@ -133,15 +125,6 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
   // Update the title content (only if not editing)
   if (!editingElements.has(nativeTitleEl)) {
     nativeTitleEl.textContent = title;
-  }
-
-  if (DEBUG) {
-    console.debug("Taskdn: processView complete", {
-      filePath: file.path,
-      title,
-      status,
-      nativeTitleSetup: nativeTitleEl.dataset.taskdnSetup,
-    });
   }
 
   // Add visual indicator class and status to the leaf content
@@ -155,8 +138,7 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
  */
 function setupNativeTitleInterception(
   plugin: TaskdnPlugin,
-  el: HTMLElement,
-  _initialFilePath: string
+  el: HTMLElement
 ): void {
   let originalValue = "";
 
@@ -164,7 +146,6 @@ function setupNativeTitleInterception(
   el.addEventListener(
     "focus",
     () => {
-      if (DEBUG) console.debug("Taskdn: focus event (capture)");
       originalValue = el.textContent ?? "";
       editingElements.add(el);
     },
@@ -174,19 +155,8 @@ function setupNativeTitleInterception(
   el.addEventListener(
     "blur",
     (e) => {
-      if (DEBUG) console.debug("Taskdn: blur event (capture)");
-
       const newValue = el.textContent ?? "";
       const path = el.dataset.filePath;
-
-      if (DEBUG) {
-        console.debug("Taskdn: blur details", {
-          originalValue,
-          newValue,
-          path,
-          changed: newValue !== originalValue,
-        });
-      }
 
       if (newValue !== originalValue && path) {
         // Stop Obsidian from handling this blur (which would rename the file)
@@ -206,12 +176,10 @@ function setupNativeTitleInterception(
     "keydown",
     (e) => {
       if (e.key === "Enter") {
-        if (DEBUG) console.debug("Taskdn: Enter key pressed");
         e.preventDefault();
         e.stopPropagation();
         el.blur();
       } else if (e.key === "Escape") {
-        if (DEBUG) console.debug("Taskdn: Escape key pressed");
         e.preventDefault();
         e.stopPropagation();
         el.textContent = originalValue;
@@ -230,38 +198,19 @@ async function saveTitle(
   filePath: string,
   newTitle: string
 ): Promise<void> {
-  if (DEBUG) {
-    console.debug("Taskdn: saveTitle called", { filePath, newTitle });
-  }
-
   try {
-    // Get fresh file reference
     const file = plugin.app.vault.getAbstractFileByPath(filePath);
     if (!file || !(file instanceof TFile)) {
       console.error("Taskdn: Could not find file:", filePath);
-      new Notice("Could not find file to save title");
       return;
     }
 
-    if (DEBUG) {
-      console.debug("Taskdn: calling processFrontMatter");
-    }
-
     await plugin.app.fileManager.processFrontMatter(file, (fm: unknown) => {
-      if (DEBUG) {
-        console.debug("Taskdn: inside processFrontMatter callback", fm);
-      }
       const frontmatter = fm as { title?: string; "updated-at"?: string };
       frontmatter.title = newTitle;
       frontmatter["updated-at"] = formatDate(new Date());
     });
-
-    if (DEBUG) {
-      console.debug("Taskdn: processFrontMatter completed");
-      new Notice("Title saved");
-    }
   } catch (error) {
     console.error("Taskdn: Error saving title:", error);
-    new Notice("Error saving title - check console");
   }
 }
