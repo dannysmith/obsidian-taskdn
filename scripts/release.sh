@@ -21,38 +21,36 @@ fi
 echo -e "${GREEN}All checks passed!${NC}\n"
 
 # Step 2: Get current version
-CURRENT_VERSION=$(grep '"version"' manifest.json | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
-echo -e "Current version: ${BLUE}${CURRENT_VERSION}${NC}"
+CURRENT_VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
+echo -e "Current version: ${BLUE}${CURRENT_VERSION}${NC}\n"
 
-# Step 3: Ask for new version
-read -rp "Enter new version (e.g., 0.2.0): " NEW_VERSION
+# Step 3: Ask for bump type
+echo -e "Select version bump type:"
+echo -e "  ${BLUE}1)${NC} patch  (${CURRENT_VERSION} -> x.x.+1)"
+echo -e "  ${BLUE}2)${NC} minor  (${CURRENT_VERSION} -> x.+1.0)"
+echo -e "  ${BLUE}3)${NC} major  (${CURRENT_VERSION} -> +1.0.0)"
+echo ""
+read -rp "Enter choice (1/2/3): " BUMP_CHOICE
 
-if [[ -z "$NEW_VERSION" ]]; then
-    echo -e "${RED}No version entered. Aborting.${NC}"
-    exit 1
-fi
+case "$BUMP_CHOICE" in
+    1) BUMP_TYPE="patch" ;;
+    2) BUMP_TYPE="minor" ;;
+    3) BUMP_TYPE="major" ;;
+    *)
+        echo -e "${RED}Invalid choice. Aborting.${NC}"
+        exit 1
+        ;;
+esac
 
-if [[ "$NEW_VERSION" == "$CURRENT_VERSION" ]]; then
-    echo -e "${RED}New version is the same as current version. Aborting.${NC}"
-    exit 1
-fi
-
-# Step 4: Update version in manifest.json and package.json
-echo -e "\n${YELLOW}Updating versions...${NC}"
-
-# Update manifest.json
-sed -i '' "s/\"version\": \"${CURRENT_VERSION}\"/\"version\": \"${NEW_VERSION}\"/" manifest.json
-echo -e "  Updated manifest.json: ${CURRENT_VERSION} -> ${NEW_VERSION}"
-
-# Update package.json
-sed -i '' "s/\"version\": \"${CURRENT_VERSION}\"/\"version\": \"${NEW_VERSION}\"/" package.json
-echo -e "  Updated package.json: ${CURRENT_VERSION} -> ${NEW_VERSION}"
-
-echo -e "${GREEN}Version files updated!${NC}\n"
+# Step 4: Run bun version (updates package.json, manifest.json, versions.json)
+echo -e "\n${YELLOW}Bumping version (${BUMP_TYPE})...${NC}"
+bun version "$BUMP_TYPE" --no-git-tag-version
+NEW_VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
+echo -e "${GREEN}Version updated: ${CURRENT_VERSION} -> ${NEW_VERSION}${NC}\n"
 
 # Step 5: Show what will happen and ask for confirmation
 echo -e "${YELLOW}The following git commands will be run:${NC}"
-echo -e "  1. git add manifest.json package.json"
+echo -e "  1. git add package.json manifest.json versions.json"
 echo -e "  2. git commit -m \"Release ${NEW_VERSION}\""
 echo -e "  3. git tag -s ${NEW_VERSION} -m \"${NEW_VERSION}\"  ${BLUE}(signed tag)${NC}"
 echo -e "  4. git push"
@@ -70,7 +68,7 @@ fi
 # Step 6: Run git commands
 echo -e "\n${YELLOW}Running git commands...${NC}"
 
-git add manifest.json package.json
+git add package.json manifest.json versions.json
 echo -e "  ${GREEN}Staged files${NC}"
 
 git commit -m "Release ${NEW_VERSION}"

@@ -41,6 +41,17 @@ bun run test:watch   # Run tests in watch mode
 
 **Testing locally**: Copy `main.js`, `manifest.json`, and `styles.css` to `.obsidian/plugins/taskdn/` in a vault, then reload Obsidian.
 
+## Releasing
+
+Run `bun run release` to create a new release. The script will:
+
+1. Run all checks (type check, lint, format, tests)
+2. Prompt for version bump type (patch/minor/major)
+3. Update `package.json`, `manifest.json`, and `versions.json`
+4. Commit, create a signed tag, and push
+
+GitHub Actions will then build and publish the release.
+
 ## Task Frontmatter Reference
 
 Tasks are identified by being inside the configured `tasksDirectory` (default: `tasks/`).
