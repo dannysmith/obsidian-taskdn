@@ -8,6 +8,8 @@ Taskdn keeps everything as plain files on disk, so you can work with your tasks 
 
 ## Features
 
+### Task Link Widgets
+
 Wikilinks to task files become clickable widgets with:
 
 - Checkbox to toggle completion (switches between `ready` and `done`)
@@ -18,6 +20,23 @@ Wikilinks to task files become clickable widgets with:
 When you put a task link in a bullet list (`- [[my-task]]`), it behaves like a native Obsidian checklist—completing it strikes through the whole line.
 
 You can also right-click any checklist item (`- [ ] Do something`) to convert it into a Taskdn task file.
+
+### Inline Title Replacement
+
+When Obsidian's "Show inline title" setting is enabled, you can optionally have task files display their human-readable `title` frontmatter instead of the filename.
+
+<img width="615" height="209" alt="Inline title replacement showing task title instead of filename" src="https://github.com/user-attachments/assets/placeholder-inline-title.png" />
+
+**How it works:**
+
+- Enable "Use task title as inline title" in the plugin settings
+- When viewing a task file, the inline title shows the `title` frontmatter (e.g., "Buy groceries") instead of the filename (e.g., "buy-groceries")
+- Editing the inline title updates the `title` frontmatter and sets `updated-at` to today's date
+- A coloured left border appears on the document indicating the task's status
+
+This only applies to valid Taskdn task files—documents in your tasks directory with both `title` and `status` frontmatter that aren't in the ignored files list. For all other files, Obsidian's normal inline title behaviour is unchanged.
+
+**Optional filename sync:** Enable "Sync filename with task title" to also rename the file when you edit the inline title. The filename is converted to kebab-case (e.g., "Buy Groceries" → `buy-groceries.md`), and Obsidian automatically updates any links to the file.
 
 ## Prerequisites
 
@@ -38,6 +57,8 @@ In Settings → Taskdn:
 - **Default status** – status for newly converted tasks (default: `inbox`)
 - **Show desktop app button** – adds a button to open tasks in the Taskdn desktop app
 - **Ignored files** – task files to exclude from widget rendering (one pattern per line, supports `*` wildcard). Paths are relative to the tasks directory, e.g. `archive/*` or `*-template`
+- **Use task title as inline title** – display the `title` frontmatter instead of the filename in Obsidian's inline title (requires Obsidian's "Show inline title" to be enabled)
+- **Sync filename with task title** – when editing the inline title, also rename the file to match (in kebab-case)
 
 ## Usage
 

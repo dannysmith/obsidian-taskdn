@@ -1,5 +1,5 @@
 import { App, TFile, CachedMetadata } from "obsidian";
-import { TaskData, TaskStatus } from "../types";
+import { TaskData, TaskStatus, TaskdnSettings } from "../types";
 
 /**
  * Expected shape of task frontmatter from Obsidian's cache
@@ -80,6 +80,40 @@ export function isTaskPath(filePath: string, tasksDirectory: string): boolean {
     : tasksDirectory;
 
   return normalizedPath.startsWith(normalizedTasksDir + "/");
+}
+
+/**
+ * Check if a file is a valid task file for inline title replacement.
+ * A file is valid if ALL of the following are true:
+ * 1. Located within the configured tasksDirectory
+ * 2. NOT matched by any pattern in ignoredFiles
+ * 3. Has a 'title' field in frontmatter (can be empty string)
+ * 4. Has a 'status' field in frontmatter
+ */
+export function isValidTaskFile(
+  file: TFile,
+  app: App,
+  settings: TaskdnSettings
+): boolean {
+  // Check if in tasks directory
+  if (!isTaskPath(file.path, settings.tasksDirectory)) return false;
+
+  // Check if in ignore list
+  if (isIgnoredFile(file, settings.tasksDirectory, settings.ignoredFiles))
+    return false;
+
+  // Check frontmatter for required fields
+  const cache = app.metadataCache.getFileCache(file);
+  const fm = cache?.frontmatter;
+  if (!fm) return false;
+
+  // Title must exist (including empty string). Use 'in' operator to check key existence.
+  if (!("title" in fm)) return false;
+
+  // Status must exist
+  if (!("status" in fm)) return false;
+
+  return true;
 }
 
 /**
@@ -271,6 +305,35 @@ export function sanitizeFilename(text: string): string {
     .slice(0, 100);
 
   return sanitized || "untitled-task";
+}
+
+/**
+ * Convert a title to kebab-case for use as a filename.
+ * - Converts to lowercase
+ * - Replaces spaces with hyphens
+ * - Removes/replaces special characters
+ * - Trims leading/trailing hyphens
+ * - Limits length to 100 characters
+ *
+ * Returns null if the title would result in an empty filename.
+ */
+export function titleToKebabCase(title: string): string | null {
+  const kebab = title
+    .toLowerCase()
+    .trim()
+    // Replace common punctuation and special chars with hyphens
+    .replace(/[\]\\/:*?"<>|''"",;:!@#$%^&*()+=[{}]/g, "-")
+    // Replace whitespace with hyphens
+    .replace(/\s+/g, "-")
+    // Collapse multiple hyphens into one
+    .replace(/-+/g, "-")
+    // Remove leading/trailing hyphens
+    .replace(/^-+|-+$/g, "")
+    // Limit length
+    .slice(0, 100);
+
+  // Return null if empty (would result in invalid filename)
+  return kebab.length > 0 ? kebab : null;
 }
 
 /**

@@ -10,6 +10,7 @@ import {
   isChecklistLine,
   extractChecklistInfo,
   sanitizeFilename,
+  titleToKebabCase,
   extractWikilinkTarget,
   escapeYamlString,
 } from "./task-utils";
@@ -298,5 +299,62 @@ describe("escapeYamlString", () => {
 
   it("returns unchanged string if no escaping needed", () => {
     expect(escapeYamlString("normal text")).toBe("normal text");
+  });
+});
+
+describe("titleToKebabCase", () => {
+  it("converts simple title to kebab-case", () => {
+    expect(titleToKebabCase("Buy New Faceplate")).toBe("buy-new-faceplate");
+    expect(titleToKebabCase("My Task")).toBe("my-task");
+  });
+
+  it("handles already lowercase text", () => {
+    expect(titleToKebabCase("simple task")).toBe("simple-task");
+  });
+
+  it("replaces special characters with hyphens", () => {
+    expect(titleToKebabCase("What's next?")).toBe("what-s-next");
+    expect(titleToKebabCase("Task: Do something!")).toBe("task-do-something");
+    expect(titleToKebabCase('Say "hello"')).toBe("say-hello");
+  });
+
+  it("collapses multiple spaces and hyphens", () => {
+    expect(titleToKebabCase("foo   bar")).toBe("foo-bar");
+    expect(titleToKebabCase("foo---bar")).toBe("foo-bar");
+    expect(titleToKebabCase("foo - bar")).toBe("foo-bar");
+  });
+
+  it("trims leading and trailing whitespace and hyphens", () => {
+    expect(titleToKebabCase("  My Task  ")).toBe("my-task");
+    expect(titleToKebabCase("---task---")).toBe("task");
+  });
+
+  it("returns null for empty or whitespace-only input", () => {
+    expect(titleToKebabCase("")).toBeNull();
+    expect(titleToKebabCase("   ")).toBeNull();
+  });
+
+  it("returns null for input that becomes empty after sanitization", () => {
+    expect(titleToKebabCase("???")).toBeNull();
+    expect(titleToKebabCase("---")).toBeNull();
+    expect(titleToKebabCase("!@#$%")).toBeNull();
+  });
+
+  it("truncates to 100 characters", () => {
+    const longTitle = "a".repeat(150);
+    const result = titleToKebabCase(longTitle);
+    expect(result).not.toBeNull();
+    expect(result!.length).toBe(100);
+  });
+
+  it("handles mixed case and punctuation", () => {
+    expect(titleToKebabCase("Buy new faceplate for pub Cajon")).toBe(
+      "buy-new-faceplate-for-pub-cajon"
+    );
+  });
+
+  it("handles numbers", () => {
+    expect(titleToKebabCase("Task 123")).toBe("task-123");
+    expect(titleToKebabCase("2024 Goals")).toBe("2024-goals");
   });
 });

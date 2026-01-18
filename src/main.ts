@@ -16,6 +16,7 @@ import {
 import { createTaskWidget, updateTaskWidget } from "./widgets/task-widget";
 import { taskLinkViewPlugin } from "./live-preview";
 import { createTaskEnterHandler } from "./enter-handler";
+import { setupInlineTitleReplacement } from "./inline-title";
 
 export default class TaskdnPlugin extends Plugin {
   settings: TaskdnSettings = { ...DEFAULT_SETTINGS };
@@ -32,6 +33,8 @@ export default class TaskdnPlugin extends Plugin {
         this.processTaskLinks(element, context);
       }
     );
+
+    setupInlineTitleReplacement(this);
 
     this.registerEvent(
       this.app.workspace.on("editor-menu", (menu, editor) => {

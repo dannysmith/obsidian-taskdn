@@ -76,5 +76,46 @@ export class TaskdnSettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    // Inline title settings - only show when Obsidian's "Show inline title" is enabled
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
+    const showInlineTitle = ((this.app.vault as any).config?.showInlineTitle ??
+      true) as boolean;
+
+    if (showInlineTitle) {
+      new Setting(containerEl)
+        .setName("Use task title as inline title")
+        .setDesc(
+          'Show the task\'s human-readable title (e.g., "Buy groceries") instead of ' +
+            'the filename (e.g., "buy-groceries") at the top of task files. ' +
+            "Edits update the title property, not the filename."
+        )
+        .addToggle((toggle) =>
+          toggle
+            .setValue(this.plugin.settings.useTaskTitleAsInlineTitle)
+            .onChange(async (value) => {
+              this.plugin.settings.useTaskTitleAsInlineTitle = value;
+              await this.plugin.saveSettings();
+              this.display(); // Re-render to show/hide dependent setting
+            })
+        );
+
+      if (this.plugin.settings.useTaskTitleAsInlineTitle) {
+        new Setting(containerEl)
+          .setName("Sync filename with task title")
+          .setDesc(
+            "When you edit the inline title, also rename the file to match (in kebab-case). " +
+              "Links to the file will be updated automatically by Obsidian."
+          )
+          .addToggle((toggle) =>
+            toggle
+              .setValue(this.plugin.settings.syncFilenameWithTaskTitle)
+              .onChange(async (value) => {
+                this.plugin.settings.syncFilenameWithTaskTitle = value;
+                await this.plugin.saveSettings();
+              })
+          );
+      }
+    }
   }
 }

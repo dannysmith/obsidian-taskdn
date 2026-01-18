@@ -363,3 +363,37 @@
 body.taskdn-show-desktop-btn .taskdn-desktop-btn {
   display: inline;
 }
+
+/* ============================================
+   Task View Indicator (Inline Title Feature)
+   ============================================ */
+
+/* Status-based left border on task file views */
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="inbox"] {
+  border-inline-start: 2px solid var(--color-blue);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="icebox"] {
+  border-inline-start: 2px solid var(--color-cyan);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="ready"] {
+  border-inline-start: 2px solid var(--color-green);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="in-progress"] {
+  border-inline-start: 2px solid var(--color-yellow);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="blocked"] {
+  border-inline-start: 2px solid var(--color-red);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="dropped"] {
+  border-inline-start: 2px solid var(--color-pink);
+}
+
+.workspace-leaf-content.taskdn-task-view[data-taskdn-status="done"] {
+  border-inline-start: 2px solid var(--color-green);
+}
+
