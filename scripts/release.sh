@@ -42,9 +42,9 @@ case "$BUMP_CHOICE" in
         ;;
 esac
 
-# Step 4: Run bun version (updates package.json, manifest.json, versions.json)
+# Step 4: Run version-bump script (updates package.json, manifest.json, versions.json)
 echo -e "\n${YELLOW}Bumping version (${BUMP_TYPE})...${NC}"
-bun version "$BUMP_TYPE" --no-git-tag-version
+node version-bump.mjs "$BUMP_TYPE"
 NEW_VERSION=$(grep '"version"' package.json | head -1 | sed 's/.*: *"\([^"]*\)".*/\1/')
 echo -e "${GREEN}Version updated: ${CURRENT_VERSION} -> ${NEW_VERSION}${NC}\n"
 
