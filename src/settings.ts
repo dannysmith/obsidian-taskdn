@@ -86,8 +86,9 @@ export class TaskdnSettingTab extends PluginSettingTab {
       new Setting(containerEl)
         .setName("Use task title as inline title")
         .setDesc(
-          "Display the task's title field instead of the filename in the inline title area. " +
-            "Only applies to valid task files."
+          'Show the task\'s human-readable title (e.g., "Buy groceries") instead of ' +
+            'the filename (e.g., "buy-groceries") at the top of task files. ' +
+            "Edits update the title property, not the filename."
         )
         .addToggle((toggle) =>
           toggle
@@ -103,8 +104,8 @@ export class TaskdnSettingTab extends PluginSettingTab {
         new Setting(containerEl)
           .setName("Sync filename with task title")
           .setDesc(
-            "When editing the inline title, also rename the file to match. " +
-              "When disabled, only the frontmatter title is updated."
+            "When you edit the inline title, also rename the file to match (in kebab-case). " +
+              "Links to the file will be updated automatically by Obsidian."
           )
           .addToggle((toggle) =>
             toggle
