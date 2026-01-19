@@ -77,10 +77,12 @@ export class TaskdnSettingTab extends PluginSettingTab {
           })
       );
 
-    // Inline title settings - only show when Obsidian's "Show inline title" is enabled
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access, @typescript-eslint/no-explicit-any
-    const showInlineTitle = ((this.app.vault as any).config?.showInlineTitle ??
-      true) as boolean;
+    // Access Obsidian's internal config to check if "Show inline title" is enabled
+    // This setting isn't part of the public API, so we use a type assertion
+    const vaultWithConfig = this.app.vault as unknown as {
+      config?: { showInlineTitle?: boolean };
+    };
+    const showInlineTitle = vaultWithConfig.config?.showInlineTitle ?? true;
 
     if (showInlineTitle) {
       new Setting(containerEl)
