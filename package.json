@@ -12,7 +12,8 @@
 		"fix": "eslint src --fix && prettier --write src",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"release": "./scripts/release.sh"
+		"release": "./scripts/release.sh",
+		"test-vault": "bun scripts/test-vault.ts"
 	},
 	"keywords": [
 		"obsidian",
