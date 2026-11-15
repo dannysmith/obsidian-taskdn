@@ -76,15 +76,17 @@ The widget shows: title, first project, area (if no project), defer-until date, 
 
 ## Visual Design
 
-| Status        | Left Border      | Opacity | Strikethrough |
-| ------------- | ---------------- | ------- | ------------- |
-| `inbox`       | `--color-blue`   | —       | —             |
-| `icebox`      | `--color-cyan`   | —       | —             |
-| `ready`       | none             | —       | —             |
-| `in-progress` | `--color-yellow` | —       | —             |
-| `blocked`     | `--color-red`    | —       | —             |
-| `dropped`     | `--color-pink`   | 0.7     | title only    |
-| `done`        | none             | 0.7     | title only    |
+| Status        | Widget border    | Task note border | Opacity | Strikethrough |
+| ------------- | ---------------- | ---------------- | ------- | ------------- |
+| `inbox`       | `--color-blue`   | `--color-blue`   | —       | —             |
+| `icebox`      | `--color-cyan`   | `--color-cyan`   | —       | —             |
+| `ready`       | none             | `--text-faint`   | —       | —             |
+| `in-progress` | `--color-yellow` | `--color-yellow` | —       | —             |
+| `blocked`     | `--color-red`    | `--color-red`    | —       | —             |
+| `dropped`     | `--color-pink`   | `--color-pink`   | 0.7     | title only    |
+| `done`        | none             | `--color-green`  | 0.7     | title only    |
+
+The task note border is the left edge of an open task note when "Use task title as inline title" is on.
 
 ## Architecture
 
