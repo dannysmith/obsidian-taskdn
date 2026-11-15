@@ -9,7 +9,13 @@
  *
  * Usage: bun run test-vault
  */
-import { mkdirSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 
 const root = resolve(import.meta.dirname, "..");
@@ -147,6 +153,12 @@ write(
 1. [ ] Numbered item
 - [ ] Item with "quotes" and a colon: in it
 `
+);
+
+// Step-by-step checks for testing by hand
+write(
+  "Manual tests.md",
+  readFileSync(join(import.meta.dirname, "manual-tests.md"), "utf8")
 );
 
 // Obsidian config: enable the plugin and seed its settings
