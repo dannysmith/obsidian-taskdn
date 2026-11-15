@@ -156,19 +156,21 @@ function setupNativeTitleInterception(
   el.addEventListener(
     "blur",
     (e) => {
-      const newValue = el.textContent ?? "";
+      editingElements.delete(el);
       const path = el.dataset.filePath;
+      if (!path) return;
 
-      if (newValue !== originalValue && path) {
-        // Stop Obsidian from handling this blur (which would rename the file)
-        e.stopPropagation();
-        e.preventDefault();
+      // Always stop Obsidian handling the blur on a task: it renames the file
+      // whenever the title text differs from the filename, which it always
+      // does here, even when nothing was edited
+      e.stopPropagation();
+      e.preventDefault();
 
+      const newValue = el.textContent ?? "";
+      if (newValue !== originalValue) {
         // Save to frontmatter instead
         void saveTitle(plugin, path, newValue);
       }
-
-      editingElements.delete(el);
     },
     true
   );

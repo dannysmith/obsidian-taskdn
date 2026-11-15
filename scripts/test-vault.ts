@@ -4,13 +4,15 @@
  * after `bun run build` (or while `bun run dev` is running) reload the plugin in
  * Obsidian to pick up changes.
  *
- * Rerunning rewrites every fixture note and the plugin settings. Anything else
- * in the vault is left alone.
+ * Rerunning recreates the tasks, projects and areas folders and rewrites the
+ * fixture notes and plugin settings. Other notes in the vault are left alone.
  *
  * Usage: bun run test-vault
  */
 import {
+  existsSync,
   mkdirSync,
+  readdirSync,
   readFileSync,
   rmSync,
   symlinkSync,
@@ -53,6 +55,16 @@ function task(
     .map(([key, value]) => `${key}: ${value}`)
     .join("\n");
   write(`tasks/${path}`, `---\n${yaml}\n---\n`);
+}
+
+// Start the fixture folders from scratch, dropping tasks that tests created or renamed
+for (const dir of ["tasks", "projects", "areas"]) {
+  const path = join(vault, dir);
+  if (!existsSync(path)) continue;
+  for (const entry of readdirSync(path)) {
+    if (entry.startsWith(".")) continue; // Hidden files aren't in the vault
+    rmSync(join(path, entry), { recursive: true, force: true });
+  }
 }
 
 // Tasks: one per status, plus the fields the widget displays
