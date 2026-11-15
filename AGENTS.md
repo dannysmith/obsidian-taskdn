@@ -89,7 +89,7 @@ The widget shows: title, first project, area (if no project), defer-until date, 
 ## Architecture
 
 - **Live Preview** (`live-preview.ts`): a CM6 `ViewPlugin` walks the syntax tree in the visible ranges, resolves wikilinks to task files and adds `Decoration.replace()` widgets.
-- **Reading Mode** (`main.ts`): a markdown post-processor replaces `a.internal-link` elements with widget DOM.
+- **Reading Mode** (`reading-mode.ts`): a markdown post-processor replaces `a.internal-link` elements with widgets. Each widget is a `MarkdownRenderChild` that rebuilds itself when its task file changes.
 
 Both use `createTaskWidget()` from `widgets/task-widget.ts`, which has two structures (chosen by `isListItem`):
 
@@ -109,7 +109,7 @@ Both use `createTaskWidget()` from `widgets/task-widget.ts`, which has two struc
 - **Checkbox alignment**: native task lines use a 30px indent. `styles.css` forces the same indent on lines containing `.taskdn-widget-wrapper` and hides the list marker so our checkbox takes its place.
 - **Decoration order**: `RangeSetBuilder` needs decorations in document order, so `buildDecorations()` collects line and widget decorations, sorts them, then adds them.
 - **Decoration precedence**: the view plugin is wrapped in `Prec.highest`. Obsidian hides `[[` with its own replace decoration, and when replace decorations overlap CM6 only draws the higher-precedence widget, so without it widgets randomly render empty.
-- **Refreshing**: when a task file or the settings change, `refreshWidgets()` in `main.ts` rebuilds Live Preview widgets (via a CM6 state effect) and re-renders Reading mode notes that link to the task. Widgets are rebuilt, never patched in place.
+- **Refreshing**: widgets are rebuilt, never patched in place. When a task file changes, Live Preview rebuilds via a CM6 state effect (`refreshLivePreviewWidgets()`) and each Reading mode widget re-renders itself. Avoid re-rendering whole Reading mode notes for task changes: it loses the scroll position. Settings changes (`applySettings()`) do re-render them, since links can become widgets or stop being widgets.
 
 ## Documentation
 
