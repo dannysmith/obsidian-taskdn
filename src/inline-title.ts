@@ -11,6 +11,9 @@ const TASK_VIEW_CLASS = "taskdn-task-view";
 /** Track which elements are currently being edited to avoid interrupting user */
 const editingElements = new WeakSet<HTMLElement>();
 
+/** Inline title elements we've already attached our event handlers to */
+const interceptedTitles = new WeakSet<HTMLElement>();
+
 /**
  * Set up inline title replacement for task files.
  * When viewing a valid task file with the feature enabled, displays the
@@ -22,13 +25,13 @@ export function setupInlineTitleReplacement(plugin: TaskdnPlugin): void {
   // Process all views on layout change and leaf change
   plugin.registerEvent(
     workspace.on("active-leaf-change", () => {
-      processAllViews(plugin);
+      refreshInlineTitles(plugin);
     })
   );
 
   plugin.registerEvent(
     workspace.on("layout-change", () => {
-      processAllViews(plugin);
+      refreshInlineTitles(plugin);
     })
   );
 
@@ -42,13 +45,13 @@ export function setupInlineTitleReplacement(plugin: TaskdnPlugin): void {
   );
 
   // Initial processing
-  processAllViews(plugin);
+  refreshInlineTitles(plugin);
 }
 
 /**
- * Process all open MarkdownViews
+ * Apply (or remove) task title replacement in all open MarkdownViews.
  */
-function processAllViews(plugin: TaskdnPlugin): void {
+export function refreshInlineTitles(plugin: TaskdnPlugin): void {
   plugin.app.workspace.iterateAllLeaves((leaf) => {
     const view = leaf.view;
     if (view instanceof MarkdownView) {
@@ -89,20 +92,15 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
   leafContent?.classList.remove(TASK_VIEW_CLASS);
   leafContent?.removeAttribute("data-taskdn-status");
 
-  // Early exit if feature disabled or no file
-  if (!plugin.settings.useTaskTitleAsInlineTitle || !file) {
-    if (nativeTitleEl) {
-      delete nativeTitleEl.dataset.taskdnSetup;
+  // Hand the title back to Obsidian if the feature is off or this isn't a task
+  if (
+    !plugin.settings.useTaskTitleAsInlineTitle ||
+    !file ||
+    !isValidTaskFile(file, plugin.app, plugin.settings)
+  ) {
+    if (nativeTitleEl?.dataset.filePath) {
       delete nativeTitleEl.dataset.filePath;
-    }
-    return;
-  }
-
-  // Check if this is a valid task file
-  if (!isValidTaskFile(file, plugin.app, plugin.settings)) {
-    if (nativeTitleEl) {
-      delete nativeTitleEl.dataset.taskdnSetup;
-      delete nativeTitleEl.dataset.filePath;
+      if (file) nativeTitleEl.textContent = file.basename;
     }
     return;
   }
@@ -116,13 +114,13 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
 
   if (!nativeTitleEl) return;
 
-  // Set up our event handlers on the native element (if not already done)
-  if (!nativeTitleEl.dataset.taskdnSetup) {
+  // Set up our event handlers on the native element (once per element)
+  if (!interceptedTitles.has(nativeTitleEl)) {
     setupNativeTitleInterception(plugin, nativeTitleEl);
-    nativeTitleEl.dataset.taskdnSetup = "true";
+    interceptedTitles.add(nativeTitleEl);
   }
 
-  // Update the file path in case the view is showing a different file
+  // Marks the title as ours; the handlers do nothing without it
   nativeTitleEl.dataset.filePath = file.path;
 
   // Update the title content (only if not editing)
@@ -178,6 +176,7 @@ function setupNativeTitleInterception(
   el.addEventListener(
     "keydown",
     (e) => {
+      if (!el.dataset.filePath) return;
       if (e.key === "Enter") {
         e.preventDefault();
         e.stopPropagation();

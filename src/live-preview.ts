@@ -6,7 +6,12 @@ import {
   EditorView,
   WidgetType,
 } from "@codemirror/view";
-import { RangeSetBuilder, EditorState } from "@codemirror/state";
+import {
+  RangeSetBuilder,
+  EditorState,
+  StateEffect,
+  Prec,
+} from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNodeRef } from "@lezer/common";
 import { TFile, editorInfoField, editorLivePreviewField } from "obsidian";
@@ -25,28 +30,35 @@ import { TaskData } from "./types";
 const widgetClickInProgress = new WeakSet<EditorView>();
 const CLICK_TIMEOUT_MS = 100;
 
+/** Editors the view plugin is running in, so widgets can be refreshed from outside CM6. */
+const editorViews = new Set<EditorView>();
+
+/** Tells the view plugin to rebuild its widgets. */
+const refreshWidgets = StateEffect.define<null>();
+
 /**
- * Helper to compare optional string arrays
+ * Rebuild task widgets in every Live Preview editor. Call when a task file or
+ * the plugin settings change.
  */
-function arraysEqual(a?: string[], b?: string[]): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  if (a.length !== b.length) return false;
-  return a.every((val, i) => val === b[i]);
+export function refreshLivePreviewWidgets(): void {
+  for (const view of editorViews) {
+    view.dispatch({ effects: refreshWidgets.of(null) });
+  }
 }
 
 /**
  * CM6 Widget for rendering task links
  */
 class TaskLinkWidget extends WidgetType {
-  private clickTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private clickTimeoutId: number | null = null;
 
   constructor(
     private plugin: TaskdnPlugin,
     private file: TFile,
     private taskData: TaskData,
     private view: EditorView,
-    private isListItem: boolean = false
+    private isListItem: boolean,
+    private showDesktopButton: boolean
   ) {
     super();
   }
@@ -57,20 +69,25 @@ class TaskLinkWidget extends WidgetType {
       file: this.file,
       taskData: this.taskData,
       isListItem: this.isListItem,
+      showDesktopButton: this.showDesktopButton,
     });
 
     // Prevent CM6 from handling mouse events on the widget
     widget.addEventListener("mousedown", (e) => {
       if (this.clickTimeoutId !== null) {
-        clearTimeout(this.clickTimeoutId);
+        window.clearTimeout(this.clickTimeoutId);
       }
 
       widgetClickInProgress.add(this.view);
       e.stopPropagation();
 
-      this.clickTimeoutId = setTimeout(() => {
+      this.clickTimeoutId = window.setTimeout(() => {
         widgetClickInProgress.delete(this.view);
         this.clickTimeoutId = null;
+        // Catch up on any refresh that was skipped during the click
+        if (editorViews.has(this.view)) {
+          this.view.dispatch({ effects: refreshWidgets.of(null) });
+        }
       }, CLICK_TIMEOUT_MS);
     });
 
@@ -80,12 +97,9 @@ class TaskLinkWidget extends WidgetType {
   eq(other: TaskLinkWidget): boolean {
     return (
       this.file.path === other.file.path &&
-      this.taskData.status === other.taskData.status &&
-      this.taskData.title === other.taskData.title &&
-      this.taskData.due === other.taskData.due &&
-      this.taskData.area === other.taskData.area &&
       this.isListItem === other.isListItem &&
-      arraysEqual(this.taskData.projects, other.taskData.projects)
+      this.showDesktopButton === other.showDesktopButton &&
+      JSON.stringify(this.taskData) === JSON.stringify(other.taskData)
     );
   }
 
@@ -212,7 +226,8 @@ function buildDecorations(
                 taskFile,
                 taskData,
                 view,
-                hasListMarker
+                hasListMarker,
+                plugin.settings.showDesktopAppButton
               ),
             }),
           });
@@ -265,12 +280,17 @@ function findLinkEnd(state: EditorState, pos: number): number {
 }
 
 export function taskLinkViewPlugin(plugin: TaskdnPlugin) {
-  return ViewPlugin.fromClass(
+  const viewPlugin = ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
 
-      constructor(view: EditorView) {
+      constructor(private view: EditorView) {
+        editorViews.add(view);
         this.decorations = buildDecorations(view, plugin);
+      }
+
+      destroy() {
+        editorViews.delete(this.view);
       }
 
       update(update: ViewUpdate) {
@@ -285,12 +305,16 @@ export function taskLinkViewPlugin(plugin: TaskdnPlugin) {
         );
         const isLivePreview = update.state.field(editorLivePreviewField, false);
         const modeChanged = wasLivePreview !== isLivePreview;
+        const refreshRequested = update.transactions.some((tr) =>
+          tr.effects.some((e) => e.is(refreshWidgets))
+        );
 
         if (
           update.docChanged ||
           update.viewportChanged ||
           update.selectionSet ||
-          modeChanged
+          modeChanged ||
+          refreshRequested
         ) {
           this.decorations = buildDecorations(update.view, plugin);
         }
@@ -299,5 +323,9 @@ export function taskLinkViewPlugin(plugin: TaskdnPlugin) {
     {
       decorations: (v) => v.decorations,
     }
-  );
+  ).extension;
+  // Obsidian hides the "[[" with its own replace decoration. When the two
+  // overlap, CM6 draws only the higher-precedence widget, so without this our
+  // widget can vanish (e.g. after a refresh or a plugin reload).
+  return Prec.highest(viewPlugin);
 }

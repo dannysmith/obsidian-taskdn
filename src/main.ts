@@ -1,4 +1,9 @@
-import { Plugin, TFile, MarkdownPostProcessorContext, Menu } from "obsidian";
+import {
+  Plugin,
+  TFile,
+  MarkdownPostProcessorContext,
+  MarkdownView,
+} from "obsidian";
 import { TaskdnSettings, DEFAULT_SETTINGS } from "./types";
 import { TaskdnSettingTab } from "./settings";
 import {
@@ -13,10 +18,13 @@ import {
   escapeYamlString,
   isIgnoredFile,
 } from "./utils/task-utils";
-import { createTaskWidget, updateTaskWidget } from "./widgets/task-widget";
-import { taskLinkViewPlugin } from "./live-preview";
+import { createTaskWidget } from "./widgets/task-widget";
+import { taskLinkViewPlugin, refreshLivePreviewWidgets } from "./live-preview";
 import { createTaskEnterHandler } from "./enter-handler";
-import { setupInlineTitleReplacement } from "./inline-title";
+import {
+  setupInlineTitleReplacement,
+  refreshInlineTitles,
+} from "./inline-title";
 
 export default class TaskdnPlugin extends Plugin {
   settings: TaskdnSettings = { ...DEFAULT_SETTINGS };
@@ -72,42 +80,10 @@ export default class TaskdnPlugin extends Plugin {
     this.registerEvent(
       this.app.metadataCache.on("changed", (file) => {
         if (this.isTaskFile(file)) {
-          this.refreshTaskWidgets(file);
+          this.refreshWidgets(file);
         }
       })
     );
-
-    this.updateDesktopButtonClasses();
-
-    this.registerDomEvent(document, "click", (e) => {
-      const btn = (e.target as HTMLElement).closest(".taskdn-desktop-btn");
-      if (!btn) return;
-      e.preventDefault();
-      e.stopPropagation();
-      const widget = btn.closest(".taskdn-widget");
-      const filePath = widget?.getAttribute("data-file-path");
-      if (filePath) this.openInDesktopApp(filePath);
-    });
-
-    this.registerDomEvent(document, "contextmenu", (e) => {
-      const widget = (e.target as HTMLElement).closest(".taskdn-widget");
-      if (!widget) return;
-      const filePath = widget.getAttribute("data-file-path");
-      if (!filePath) return;
-
-      const menu = new Menu();
-      menu.addItem((item) =>
-        item
-          .setTitle("Open in taskdn desktop app")
-          .setIcon("arrow-up-right")
-          .onClick(() => this.openInDesktopApp(filePath))
-      );
-      menu.showAtMouseEvent(e);
-    });
-  }
-
-  onunload() {
-    // Cleanup handled by Obsidian
   }
 
   async loadSettings() {
@@ -115,23 +91,30 @@ export default class TaskdnPlugin extends Plugin {
     this.settings = { ...DEFAULT_SETTINGS, ...data };
   }
 
-  async saveSettings() {
-    await this.saveData(this.settings);
+  /** Re-render everything that depends on the settings. */
+  applySettings() {
+    this.refreshWidgets();
+    refreshInlineTitles(this);
   }
 
-  updateDesktopButtonClasses() {
-    document.body.classList.toggle(
-      "taskdn-show-desktop-btn",
-      this.settings.showDesktopAppButton
-    );
-  }
+  /**
+   * Rebuild task widgets in open notes. Given a changed task file, Reading
+   * mode only re-renders the notes that link to it.
+   */
+  refreshWidgets(changedTask?: TFile) {
+    refreshLivePreviewWidgets();
 
-  private openInDesktopApp(filePath: string) {
-    const vaultPath = (this.app.vault.adapter as { basePath?: string })
-      .basePath;
-    if (!vaultPath) return;
-    const absolutePath = `${vaultPath}/${filePath}`;
-    window.open(`taskdn://open?path=${encodeURIComponent(absolutePath)}`);
+    const links = this.app.metadataCache.resolvedLinks;
+    this.app.workspace.iterateAllLeaves((leaf) => {
+      const view = leaf.view;
+      if (!(view instanceof MarkdownView) || view.getMode() !== "preview") {
+        return;
+      }
+      if (changedTask && !links[view.file?.path ?? ""]?.[changedTask.path]) {
+        return;
+      }
+      view.previewMode.rerender(true);
+    });
   }
 
   /**
@@ -182,6 +165,7 @@ export default class TaskdnPlugin extends Plugin {
         app: this.app,
         file,
         taskData,
+        showDesktopButton: this.settings.showDesktopAppButton,
       });
 
       // Only treat as task list item if link is first content in <li>
@@ -221,7 +205,7 @@ export default class TaskdnPlugin extends Plugin {
    */
   private isFirstContentInLi(link: HTMLElement, li: HTMLElement): boolean {
     // Get all text before the link by using a TreeWalker
-    const walker = document.createTreeWalker(li, NodeFilter.SHOW_TEXT, {
+    const walker = li.doc.createTreeWalker(li, NodeFilter.SHOW_TEXT, {
       acceptNode: (node) => {
         // Check if this text node comes before the link in document order
         const position = node.compareDocumentPosition(link);
@@ -312,21 +296,5 @@ updated-at: ${today}`;
     }
 
     return filename;
-  }
-
-  /**
-   * Refresh all widgets for a specific task file
-   */
-  private refreshTaskWidgets(file: TFile) {
-    const cache = this.app.metadataCache.getFileCache(file);
-    const taskData = getTaskDataFromCache(file, cache);
-
-    const widgets = document.querySelectorAll<HTMLElement>(
-      `.taskdn-widget[data-file-path="${file.path}"]`
-    );
-
-    widgets.forEach((widget) => {
-      updateTaskWidget(widget, taskData);
-    });
   }
 }

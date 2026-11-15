@@ -41,7 +41,9 @@ bun run test-vault   # Create or reset the test vault
 With the test vault open in Obsidian, drive it with the [Obsidian CLI](https://help.obsidian.md/cli) after each build:
 
 ```bash
-obsidian vault=test-vault reload             # Reload the window. Do this before screenshots
+obsidian vault=test-vault plugin:reload id=taskdn   # Load the new build
+obsidian vault=test-vault reload             # Reload the whole window (a clean startup)
+obsidian vault=test-vault open file=Widgets  # Open a note
 obsidian vault=test-vault dev:errors         # Errors since load
 obsidian vault=test-vault dev:screenshot     # Prints the path of a temp PNG
 obsidian vault=test-vault dev:dom selector=".taskdn-widget" total
@@ -49,7 +51,7 @@ obsidian vault=test-vault dev:mobile on      # Mobile emulation
 ```
 
 - Only ever target `vault=test-vault`. `eval` and `dev:cdp` run arbitrary code and need Danny's approval.
-- `plugin:reload id=taskdn` leaves open notes with blank list widgets until they're reopened; prefer `reload`.
+- Files in `test-vault/` can be edited directly; Obsidian picks up the change, which is a quick way to test widget refreshes.
 - Screenshot filenames contain narrow no-break spaces. Copy with a glob (`cp "$dir"/obsidian-screenshot-*.png ...`) before reading.
 
 ## Releasing
@@ -106,6 +108,8 @@ Both use `createTaskWidget()` from `widgets/task-widget.ts`, which has two struc
 - **Click handling**: CM6 grabs mouse events on decorations, so a checkbox click would move the cursor instead. The widget's `ignoreEvent()` returns true for mouse events, its `mousedown` handler stops propagation, and the `widgetClickInProgress` WeakSet blocks decoration rebuilds mid-click (otherwise the widget is destroyed during the interaction).
 - **Checkbox alignment**: native task lines use a 30px indent. `styles.css` forces the same indent on lines containing `.taskdn-widget-wrapper` and hides the list marker so our checkbox takes its place.
 - **Decoration order**: `RangeSetBuilder` needs decorations in document order, so `buildDecorations()` collects line and widget decorations, sorts them, then adds them.
+- **Decoration precedence**: the view plugin is wrapped in `Prec.highest`. Obsidian hides `[[` with its own replace decoration, and when replace decorations overlap CM6 only draws the higher-precedence widget, so without it widgets randomly render empty.
+- **Refreshing**: when a task file or the settings change, `refreshWidgets()` in `main.ts` rebuilds Live Preview widgets (via a CM6 state effect) and re-renders Reading mode notes that link to the task. Widgets are rebuilt, never patched in place.
 
 ## Documentation
 

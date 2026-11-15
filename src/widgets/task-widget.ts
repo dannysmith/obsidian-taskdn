@@ -1,5 +1,5 @@
-import { App, TFile } from "obsidian";
-import { TaskData } from "../types";
+import { App, FileSystemAdapter, Menu, Platform, TFile } from "obsidian";
+import { TaskData, TaskStatus } from "../types";
 import {
   isDoneStatus,
   getDataTaskValue,
@@ -14,6 +14,8 @@ export interface TaskWidgetOptions {
   taskData: TaskData;
   /** Whether this widget is replacing a list item marker (for native-like checkbox positioning) */
   isListItem?: boolean;
+  /** Whether to show the "open in desktop app" button */
+  showDesktopButton?: boolean;
 }
 
 /**
@@ -25,292 +27,206 @@ export interface TaskWidgetOptions {
  *   <label class="task-list-label">
  *     <input class="task-list-item-checkbox taskdn-checkbox" data-task=" ">
  *   </label>
- *   <span class="taskdn-widget taskdn-content">...</span>
+ *   <span class="taskdn-widget">...</span>
  * </span>
+ *
+ * Otherwise returns a self-contained inline pill with the checkbox inside.
  */
 export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
-  const { app, file, taskData, isListItem = false } = options;
-  const isDone = isDoneStatus(taskData.status);
+  const {
+    app,
+    file,
+    taskData,
+    isListItem = false,
+    showDesktopButton = false,
+  } = options;
 
-  // Create checkbox element
-  const checkbox = document.createElement("input");
-  checkbox.type = "checkbox";
-  checkbox.checked = isDone;
-  checkbox.setAttribute(
-    "aria-label",
-    `Mark "${taskData.title}" as ${isDone ? "incomplete" : "complete"}`
-  );
-
-  // Build the content container (title, meta, desktop button)
-  const content = document.createElement("span");
-  content.className = "taskdn-widget";
-  content.dataset.status = taskData.status;
-  content.dataset.filePath = file.path;
-  content.setAttribute("role", "group");
-  content.setAttribute("aria-label", `Task: ${taskData.title}`);
-
-  const title = document.createElement("span");
-  title.className = "taskdn-title";
-  title.textContent = taskData.title;
-  title.setAttribute("role", "link");
-  title.setAttribute("tabindex", "0");
-  title.setAttribute("aria-label", `Open task: ${taskData.title}`);
-
-  const openFile = async () => {
-    const leaf = app.workspace.getLeaf(false);
-    await leaf.openFile(file);
+  const checkbox = createEl("input", {
+    type: "checkbox",
+    // List items mimic native task checkboxes so themes style them the same
+    cls: isListItem
+      ? "task-list-item-checkbox taskdn-checkbox"
+      : "taskdn-checkbox",
+  });
+  const setCheckboxState = (status: TaskStatus) => {
+    const done = isDoneStatus(status);
+    checkbox.checked = done;
+    if (isListItem) checkbox.dataset.task = getDataTaskValue(status);
+    checkbox.setAttribute(
+      "aria-label",
+      `Mark "${taskData.title}" as ${done ? "incomplete" : "complete"}`
+    );
   };
+  setCheckboxState(taskData.status);
 
-  title.addEventListener("click", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    void openFile();
+  // Content container (title, meta, desktop button)
+  const content = createSpan({
+    cls: "taskdn-widget",
+    attr: {
+      "data-status": taskData.status,
+      role: "group",
+      "aria-label": `Task: ${taskData.title}`,
+    },
   });
-  title.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      e.stopPropagation();
-      void openFile();
-    }
-  });
-  content.appendChild(title);
 
-  const meta = document.createElement("span");
-  meta.className = "taskdn-meta";
+  const title = content.createSpan({
+    cls: "taskdn-title",
+    text: taskData.title,
+    attr: {
+      role: "link",
+      tabindex: "0",
+      "aria-label": `Open task: ${taskData.title}`,
+    },
+  });
+  onActivate(title, () => app.workspace.getLeaf(false).openFile(file));
+
+  const meta = createSpan({ cls: "taskdn-meta" });
 
   const projectLink = taskData.projects?.[0];
   if (projectLink) {
     const projectName = extractWikilinkTarget(projectLink) || projectLink;
-    const projectEl = createMetaLink(
-      app,
-      file.path,
-      projectName,
-      "taskdn-project"
-    );
-    meta.appendChild(projectEl);
+    addMetaLink(meta, app, file.path, projectName, "taskdn-project");
   } else if (taskData.area) {
     // Only show area if no project (to avoid clutter)
     const areaName = extractWikilinkTarget(taskData.area) || taskData.area;
-    const areaEl = createMetaLink(app, file.path, areaName, "taskdn-area");
-    meta.appendChild(areaEl);
+    addMetaLink(meta, app, file.path, areaName, "taskdn-area");
   }
 
   if (taskData.deferUntil) {
-    const deferEl = document.createElement("span");
-    deferEl.className = "taskdn-defer";
-    deferEl.textContent = formatDateForDisplay(taskData.deferUntil);
-    deferEl.setAttribute(
-      "aria-label",
-      `Deferred until: ${taskData.deferUntil}`
-    );
-    meta.appendChild(deferEl);
+    meta.createSpan({
+      cls: "taskdn-defer",
+      text: formatDateForDisplay(taskData.deferUntil),
+      attr: { "aria-label": `Deferred until: ${taskData.deferUntil}` },
+    });
   }
 
   if (taskData.due) {
-    const dueEl = document.createElement("span");
-    dueEl.className = "taskdn-due";
-    dueEl.textContent = formatDateForDisplay(taskData.due);
-    dueEl.setAttribute("aria-label", `Due: ${taskData.due}`);
-    meta.appendChild(dueEl);
+    meta.createSpan({
+      cls: "taskdn-due",
+      text: formatDateForDisplay(taskData.due),
+      attr: { "aria-label": `Due: ${taskData.due}` },
+    });
   }
 
   if (meta.hasChildNodes()) {
     content.appendChild(meta);
   }
 
-  const desktopBtn = document.createElement("span");
-  desktopBtn.className = "taskdn-desktop-btn";
-  desktopBtn.setAttribute("role", "button");
-  desktopBtn.setAttribute("aria-label", "Open in desktop app");
-  desktopBtn.textContent = "↗";
-  content.appendChild(desktopBtn);
-
-  // For list items, use native-like structure with checkbox outside
-  if (isListItem) {
-    checkbox.className = "task-list-item-checkbox taskdn-checkbox";
-    checkbox.dataset.task = getDataTaskValue(taskData.status);
-
-    const wrapper = document.createElement("span");
-    wrapper.className = "taskdn-widget-wrapper";
-    wrapper.dataset.status = taskData.status;
-
-    const label = document.createElement("label");
-    label.className = "task-list-label";
-    label.contentEditable = "false";
-    label.appendChild(checkbox);
-
-    wrapper.appendChild(label);
-    wrapper.appendChild(content);
-
-    // Checkbox click handler - update wrapper status too
-    checkbox.addEventListener("click", (e) => {
+  if (showDesktopButton && Platform.isDesktopApp) {
+    const desktopBtn = content.createSpan({
+      cls: "taskdn-desktop-btn",
+      text: "↗",
+      attr: { role: "button", "aria-label": "Open in desktop app" },
+    });
+    desktopBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
-
-      void (async () => {
-        try {
-          const newStatus = await toggleTaskStatus(file, app);
-          const newIsDone = isDoneStatus(newStatus);
-          checkbox.checked = newIsDone;
-          checkbox.dataset.task = getDataTaskValue(newStatus);
-          content.dataset.status = newStatus;
-          wrapper.dataset.status = newStatus;
-          checkbox.setAttribute(
-            "aria-label",
-            `Mark "${taskData.title}" as ${newIsDone ? "incomplete" : "complete"}`
-          );
-        } catch (err) {
-          checkbox.checked = isDone;
-          console.error("Taskdn: Failed to toggle task status:", err);
-        }
-      })();
+      openInDesktopApp(app, file.path);
     });
-
-    return wrapper;
   }
 
-  // For non-list items (inline), keep checkbox inside content
-  checkbox.className = "taskdn-checkbox";
+  if (Platform.isDesktopApp) {
+    content.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      new Menu()
+        .addItem((item) =>
+          item
+            .setTitle("Open in taskdn desktop app")
+            .setIcon("arrow-up-right")
+            .onClick(() => openInDesktopApp(app, file.path))
+        )
+        .showAtMouseEvent(e);
+    });
+  }
+
+  let root = content;
+  if (isListItem) {
+    // Native-like structure: checkbox outside the content
+    root = createSpan({
+      cls: "taskdn-widget-wrapper",
+      attr: { "data-status": taskData.status },
+    });
+    root
+      .createEl("label", {
+        cls: "task-list-label",
+        attr: { contenteditable: "false" },
+      })
+      .appendChild(checkbox);
+    root.appendChild(content);
+  } else {
+    content.prepend(checkbox);
+    // Isolates the widget from the surrounding line's text-decoration
+    content.addClass("taskdn-inline");
+  }
+
   checkbox.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
 
     void (async () => {
       try {
+        // Update immediately; the widget is rebuilt once the file's metadata changes
         const newStatus = await toggleTaskStatus(file, app);
-        checkbox.checked = isDoneStatus(newStatus);
+        setCheckboxState(newStatus);
         content.dataset.status = newStatus;
-        checkbox.setAttribute(
-          "aria-label",
-          `Mark "${taskData.title}" as ${isDoneStatus(newStatus) ? "incomplete" : "complete"}`
-        );
+        root.dataset.status = newStatus;
       } catch (err) {
-        checkbox.checked = isDone;
+        setCheckboxState(taskData.status);
         console.error("Taskdn: Failed to toggle task status:", err);
       }
     })();
   });
 
-  // Insert checkbox at the beginning of content
-  content.insertBefore(checkbox, content.firstChild);
-
-  // Add inline class for CSS targeting (isolates from parent text-decoration)
-  content.classList.add("taskdn-inline");
-
-  return content;
+  return root;
 }
 
-function createMetaLink(
-  app: App,
-  sourcePath: string,
-  linkText: string,
-  className: string
-): HTMLElement {
-  const el = document.createElement("span");
-  el.className = className;
-  el.textContent = linkText;
-  el.setAttribute("role", "link");
-  el.setAttribute("tabindex", "0");
-  el.setAttribute("aria-label", `Open: ${linkText}`);
-
-  const openLink = async () => {
-    const targetFile = app.metadataCache.getFirstLinkpathDest(
-      linkText,
-      sourcePath
-    );
-    if (targetFile) {
-      const leaf = app.workspace.getLeaf(false);
-      await leaf.openFile(targetFile);
-    } else {
-      await app.workspace.openLinkText(linkText, sourcePath, false);
-    }
-  };
-
+/** Run `action` on click, or on Enter/Space when focused. */
+function onActivate(el: HTMLElement, action: () => Promise<unknown>): void {
   el.addEventListener("click", (e) => {
     e.preventDefault();
     e.stopPropagation();
-    void openLink();
+    void action();
   });
   el.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       e.stopPropagation();
-      void openLink();
+      void action();
     }
   });
-  return el;
 }
 
-/**
- * Update an existing widget's display based on new task data.
- * Project/area updates require a full widget rebuild via decoration refresh.
- */
-export function updateTaskWidget(
-  widget: HTMLElement,
-  taskData: TaskData,
-  _app?: App,
-  _sourcePath?: string
+function addMetaLink(
+  parent: HTMLElement,
+  app: App,
+  sourcePath: string,
+  linkText: string,
+  className: string
 ): void {
-  widget.dataset.status = taskData.status;
-  widget.setAttribute("aria-label", `Task: ${taskData.title}`);
+  const el = parent.createSpan({
+    cls: className,
+    text: linkText,
+    attr: { role: "link", tabindex: "0", "aria-label": `Open: ${linkText}` },
+  });
 
-  const checkbox = widget.querySelector<HTMLInputElement>(".taskdn-checkbox");
-  if (checkbox) {
-    checkbox.checked = isDoneStatus(taskData.status);
-    checkbox.setAttribute(
-      "aria-label",
-      `Mark "${taskData.title}" as ${isDoneStatus(taskData.status) ? "incomplete" : "complete"}`
+  onActivate(el, async () => {
+    const targetFile = app.metadataCache.getFirstLinkpathDest(
+      linkText,
+      sourcePath
     );
-  }
-
-  const title = widget.querySelector<HTMLElement>(".taskdn-title");
-  if (title) {
-    title.textContent = taskData.title;
-    title.setAttribute("aria-label", `Open task: ${taskData.title}`);
-  }
-
-  const meta = widget.querySelector<HTMLElement>(".taskdn-meta");
-  const existingDefer = widget.querySelector<HTMLElement>(".taskdn-defer");
-  const existingDue = widget.querySelector<HTMLElement>(".taskdn-due");
-
-  if (taskData.deferUntil) {
-    if (existingDefer) {
-      existingDefer.textContent = formatDateForDisplay(taskData.deferUntil);
-      existingDefer.setAttribute(
-        "aria-label",
-        `Deferred until: ${taskData.deferUntil}`
-      );
-    } else if (meta) {
-      const deferEl = document.createElement("span");
-      deferEl.className = "taskdn-defer";
-      deferEl.textContent = formatDateForDisplay(taskData.deferUntil);
-      deferEl.setAttribute(
-        "aria-label",
-        `Deferred until: ${taskData.deferUntil}`
-      );
-      // Insert before due date if it exists
-      if (existingDue) {
-        meta.insertBefore(deferEl, existingDue);
-      } else {
-        meta.appendChild(deferEl);
-      }
+    if (targetFile) {
+      await app.workspace.getLeaf(false).openFile(targetFile);
+    } else {
+      await app.workspace.openLinkText(linkText, sourcePath, false);
     }
-  } else if (existingDefer) {
-    existingDefer.remove();
-  }
+  });
+}
 
-  if (taskData.due) {
-    if (existingDue) {
-      existingDue.textContent = formatDateForDisplay(taskData.due);
-      existingDue.setAttribute("aria-label", `Due: ${taskData.due}`);
-    } else if (meta) {
-      const dueEl = document.createElement("span");
-      dueEl.className = "taskdn-due";
-      dueEl.textContent = formatDateForDisplay(taskData.due);
-      dueEl.setAttribute("aria-label", `Due: ${taskData.due}`);
-      meta.appendChild(dueEl);
-    }
-  } else if (existingDue) {
-    existingDue.remove();
-  }
+/** Open a vault file in the Taskdn desktop app via its URL scheme. Desktop only. */
+function openInDesktopApp(app: App, filePath: string): void {
+  const adapter = app.vault.adapter;
+  if (!(adapter instanceof FileSystemAdapter)) return;
+  const absolutePath = adapter.getFullPath(filePath);
+  window.open(`taskdn://open?path=${encodeURIComponent(absolutePath)}`);
 }
