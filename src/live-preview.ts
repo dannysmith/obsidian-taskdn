@@ -160,8 +160,10 @@ function buildDecorations(
           const linkStart = findLinkStart(state, node.from);
           const linkEnd = findLinkEnd(state, node.to);
 
-          // Skip if cursor is inside (allows editing the raw wikilink)
-          if (cursorPos >= linkStart && cursorPos <= linkEnd) {
+          // Show the raw wikilink while the cursor is inside it, so it can be
+          // edited. A cursor just before or after it keeps the widget, so
+          // clicking beside a widget and pressing Enter works.
+          if (cursorPos > linkStart && cursorPos < linkEnd) {
             return;
           }
 

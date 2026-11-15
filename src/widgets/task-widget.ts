@@ -118,6 +118,8 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
       text: "↗",
       attr: { role: "button", "aria-label": "Open in desktop app" },
     });
+    // Stop the editor from moving the cursor under the button
+    desktopBtn.addEventListener("mousedown", (e) => e.preventDefault());
     desktopBtn.addEventListener("click", (e) => {
       e.preventDefault();
       e.stopPropagation();
