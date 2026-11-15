@@ -127,7 +127,7 @@ export function resolveTaskFile(
   tasksDirectory: string
 ): TFile | null {
   // Remove any heading/block references from the link
-  const cleanLink = linkText.split("#")[0].split("^")[0];
+  const cleanLink = linkText.replace(/[#^].*$/, "");
 
   const file = app.metadataCache.getFirstLinkpathDest(cleanLink, sourcePath);
   if (file && isTaskPath(file.path, tasksDirectory)) {
@@ -187,27 +187,21 @@ export async function toggleTaskStatus(
 }
 
 /**
- * Format a date as YYYY-MM-DD
+ * Format a date as YYYY-MM-DD in local time
  */
 export function formatDate(date: Date): string {
-  return date.toISOString().split("T")[0];
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
 
 /**
- * Parse a YYYY-MM-DD date string to a Date object at noon local time
+ * Parse a date string. A plain YYYY-MM-DD date is read as noon local time.
  */
 function parseDateString(dateStr: string): Date | null {
-  const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (match) {
-    const [, year, month, day] = match;
-    return new Date(parseInt(year), parseInt(month) - 1, parseInt(day), 12);
-  }
-  try {
-    const date = new Date(dateStr);
-    return isNaN(date.getTime()) ? null : date;
-  } catch {
-    return null;
-  }
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(dateStr)
+    ? new Date(`${dateStr}T12:00:00`)
+    : new Date(dateStr);
+  return isNaN(date.getTime()) ? null : date;
 }
 
 /**
@@ -282,14 +276,12 @@ export function extractChecklistInfo(line: string): {
   listMarker: string;
 } {
   const match = line.match(/^(\s*)([-*]|\d+\.)\s+\[([ xX])\]\s+(.+)$/);
-  if (!match) {
-    return { text: "", checked: false, indent: "", listMarker: "-" };
-  }
+  const [, indent = "", listMarker = "-", mark = "", text = ""] = match ?? [];
   return {
-    indent: match[1],
-    listMarker: match[2],
-    checked: match[3].toLowerCase() === "x",
-    text: match[4].trim(),
+    indent,
+    listMarker,
+    checked: mark.toLowerCase() === "x",
+    text: text.trim(),
   };
 }
 
@@ -341,7 +333,7 @@ export function titleToKebabCase(title: string): string | null {
  */
 export function extractWikilinkTarget(text: string): string | null {
   const match = text.match(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/);
-  return match ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 /**

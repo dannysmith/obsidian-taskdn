@@ -88,9 +88,7 @@ write("areas/health.md", '---\ntitle: "Health"\n---\n');
 
 write(
   "Widgets.md",
-  `# Widgets
-
-## Bullet list (should look like native tasks)
+  `## Bullet list (should look like native tasks)
 
 - [[inbox-task]]
 - [[icebox-task]]
@@ -141,9 +139,7 @@ Aliased: [[project-task|the homepage task]]. Heading link: [[area-task#Notes]].
 
 write(
   "Checklist conversion.md",
-  `# Checklist conversion
-
-Right-click an item, or run "Convert checklist item to task".
+  `Right-click an item, or run "Convert checklist item to task".
 
 - [ ] Call the bank about the mortgage
 - [x] Already done item

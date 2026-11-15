@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "bun:test";
 import {
   isValidStatus,
   parseStatus,
@@ -109,6 +109,17 @@ describe("formatDate", () => {
   it("formats date as YYYY-MM-DD", () => {
     expect(formatDate(new Date("2025-01-15T12:00:00"))).toBe("2025-01-15");
     expect(formatDate(new Date("2025-12-31T23:59:59"))).toBe("2025-12-31");
+  });
+
+  it("uses the local date, not the UTC date", () => {
+    const originalTZ = process.env.TZ;
+    process.env.TZ = "Europe/London";
+    try {
+      // 00:30 in British Summer Time is still the previous day in UTC
+      expect(formatDate(new Date("2025-07-01T00:30:00"))).toBe("2025-07-01");
+    } finally {
+      process.env.TZ = originalTZ;
+    }
   });
 });
 

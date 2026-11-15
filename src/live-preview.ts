@@ -16,6 +16,7 @@ import {
   getTaskDataFromCache,
   getDataTaskValue,
   isIgnoredFile,
+  extractWikilinkTarget,
 } from "./utils/task-utils";
 import { createTaskWidget } from "./widgets/task-widget";
 import { TaskData } from "./types";
@@ -150,12 +151,13 @@ function buildDecorations(
             return;
           }
 
-          const fullText = state.sliceDoc(linkStart, linkEnd);
-          const linkMatch = fullText.match(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/);
-          if (!linkMatch) return;
+          const linkTarget = extractWikilinkTarget(
+            state.sliceDoc(linkStart, linkEnd)
+          );
+          if (!linkTarget) return;
 
           const taskFile = resolveTaskFile(
-            linkMatch[1],
+            linkTarget,
             sourcePath,
             plugin.app,
             plugin.settings.tasksDirectory
@@ -177,8 +179,7 @@ function buildDecorations(
           const cache = plugin.app.metadataCache.getFileCache(taskFile);
           const taskData = getTaskDataFromCache(taskFile, cache);
 
-          // Check if there's a list marker before the link
-          const { hasListMarker } = findListMarkerStart(state, linkStart);
+          const hasListMarker = hasListMarkerBefore(state, linkStart);
 
           // Only add line decoration for actual list items (not inline task links)
           // This makes the line behave like a native task line with proper checkbox alignment
@@ -242,31 +243,13 @@ function findLinkStart(state: EditorState, pos: number): number {
 }
 
 /**
- * Find if there's a list marker before the link and return its start position.
- * Returns the link start if no list marker found.
+ * Whether the link is the first thing after a bullet list marker ("- ", "* "
+ * or "+ ", optionally indented). Numbered lists don't count.
  */
-function findListMarkerStart(
-  state: EditorState,
-  linkStart: number
-): { start: number; hasListMarker: boolean } {
+function hasListMarkerBefore(state: EditorState, linkStart: number): boolean {
   const line = state.doc.lineAt(linkStart);
   const beforeLink = line.text.slice(0, linkStart - line.from);
-
-  // Match bullet list markers: "- ", "* ", "+ "
-  // Only bullet lists, not numbered lists (1., 2., etc.)
-  // The list marker should be at the start (after optional whitespace)
-  const listMarkerMatch = beforeLink.match(/^(\s*)([-*+])\s+$/);
-
-  if (listMarkerMatch) {
-    // Return position after leading whitespace but include the marker
-    const leadingWhitespace = listMarkerMatch[1].length;
-    return {
-      start: line.from + leadingWhitespace,
-      hasListMarker: true,
-    };
-  }
-
-  return { start: linkStart, hasListMarker: false };
+  return /^\s*[-*+]\s+$/.test(beforeLink);
 }
 
 function findLinkEnd(state: EditorState, pos: number): number {

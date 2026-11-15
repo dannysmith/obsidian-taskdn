@@ -396,4 +396,3 @@ body.taskdn-show-desktop-btn .taskdn-desktop-btn {
 .workspace-leaf-content.taskdn-task-view[data-taskdn-status="done"] {
   border-inline-start: 2px solid var(--color-green);
 }
-

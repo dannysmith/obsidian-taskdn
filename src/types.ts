@@ -2,13 +2,7 @@
  * Valid task statuses per S1 spec
  */
 export type TaskStatus =
-  | "inbox"
-  | "icebox"
-  | "ready"
-  | "in-progress"
-  | "blocked"
-  | "dropped"
-  | "done";
+  "inbox" | "icebox" | "ready" | "in-progress" | "blocked" | "dropped" | "done";
 
 /**
  * Data extracted from a task file's frontmatter

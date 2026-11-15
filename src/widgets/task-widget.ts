@@ -78,8 +78,8 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
   const meta = document.createElement("span");
   meta.className = "taskdn-meta";
 
-  if (taskData.projects && taskData.projects.length > 0) {
-    const projectLink = taskData.projects[0];
+  const projectLink = taskData.projects?.[0];
+  if (projectLink) {
     const projectName = extractWikilinkTarget(projectLink) || projectLink;
     const projectEl = createMetaLink(
       app,
@@ -88,10 +88,8 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
       "taskdn-project"
     );
     meta.appendChild(projectEl);
-  }
-
-  // Only show area if no project (to avoid clutter)
-  if (taskData.area && (!taskData.projects || taskData.projects.length === 0)) {
+  } else if (taskData.area) {
+    // Only show area if no project (to avoid clutter)
     const areaName = extractWikilinkTarget(taskData.area) || taskData.area;
     const areaEl = createMetaLink(app, file.path, areaName, "taskdn-area");
     meta.appendChild(areaEl);

@@ -110,8 +110,7 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
   // Get the title and status from frontmatter
   const cache = plugin.app.metadataCache.getFileCache(file);
   const fm = cache?.frontmatter as
-    | { title?: string; status?: string }
-    | undefined;
+    { title?: string; status?: string } | undefined;
   const title = typeof fm?.title === "string" ? fm.title : "";
   const status = typeof fm?.status === "string" ? fm.status : "inbox";
 

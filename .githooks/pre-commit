@@ -1,0 +1,4 @@
+#!/bin/sh
+# Runs every check before each commit. Enabled by `bun install` (see the
+# "prepare" script). Skip once with `git commit --no-verify`.
+exec bun run check

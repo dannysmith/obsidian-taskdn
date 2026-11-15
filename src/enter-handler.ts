@@ -41,21 +41,15 @@ function handleTaskEnter(view: EditorView, plugin: TaskdnPlugin): boolean {
   const lineText = line.text;
   const cursorInLine = selection.head - line.from;
 
-  // Match a task widget line: optional indent + bullet marker + wikilink at start
-  // Captures: [1] = indent, [2] = link target
+  // Match a task widget line: optional indent + bullet marker + wikilink at
+  // start (handles aliases like [[task|alias]]). The match ends at the "]]".
   const taskLineMatch = lineText.match(
     /^(\s*)[-*+]\s*\[\[([^\]|#]+)(?:[|#][^\]]*)?\]\]/
   );
   if (!taskLineMatch) return false;
 
-  const [, indent, linkTarget] = taskLineMatch;
-
-  // Find the full wikilink bounds (handles aliases like [[task|alias]])
-  const wikilinkMatch = lineText.match(/\[\[([^\]|#]+)(?:[|#][^\]]+)?\]\]/);
-  if (!wikilinkMatch) return false;
-
-  const wikilinkStart = lineText.indexOf(wikilinkMatch[0]);
-  const wikilinkEnd = wikilinkStart + wikilinkMatch[0].length;
+  const [wikilinkLine, indent = "", linkTarget = ""] = taskLineMatch;
+  const wikilinkEnd = wikilinkLine.length;
 
   // Don't handle if cursor is before or inside the wikilink
   // (allows editing the raw wikilink when cursor is there)
