@@ -87,7 +87,7 @@ bun run fix          # Auto-fix lint and formatting
 bun run test-vault   # Create or reset a test vault in test-vault/
 ```
 
-To try your changes, open `test-vault/` as a vault in Obsidian. The build is symlinked into it, so reload the plugin after each build. Its "Manual tests" note walks through the main features. See [AGENTS.md](AGENTS.md) for architecture notes.
+To try your changes, open `test-vault/` as a vault in Obsidian. The build is symlinked into it, so reload the plugin after each build. See [AGENTS.md](AGENTS.md) for architecture notes.
 
 ## License
 
