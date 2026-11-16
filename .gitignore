@@ -4,7 +4,6 @@ main.js
 
 # Dependencies
 node_modules/
-bun.lock
 
 *.local/
 *.local
@@ -23,3 +22,4 @@ data.json
 
 # Development
 .hotreload
+test-vault/

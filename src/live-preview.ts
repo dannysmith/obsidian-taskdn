@@ -6,7 +6,12 @@ import {
   EditorView,
   WidgetType,
 } from "@codemirror/view";
-import { RangeSetBuilder, EditorState } from "@codemirror/state";
+import {
+  RangeSetBuilder,
+  EditorState,
+  StateEffect,
+  Prec,
+} from "@codemirror/state";
 import { syntaxTree } from "@codemirror/language";
 import type { SyntaxNodeRef } from "@lezer/common";
 import { TFile, editorInfoField, editorLivePreviewField } from "obsidian";
@@ -16,6 +21,7 @@ import {
   getTaskDataFromCache,
   getDataTaskValue,
   isIgnoredFile,
+  extractWikilinkTarget,
 } from "./utils/task-utils";
 import { createTaskWidget } from "./widgets/task-widget";
 import { TaskData } from "./types";
@@ -24,28 +30,35 @@ import { TaskData } from "./types";
 const widgetClickInProgress = new WeakSet<EditorView>();
 const CLICK_TIMEOUT_MS = 100;
 
+/** Editors the view plugin is running in, so widgets can be refreshed from outside CM6. */
+const editorViews = new Set<EditorView>();
+
+/** Tells the view plugin to rebuild its widgets. */
+const refreshWidgets = StateEffect.define<null>();
+
 /**
- * Helper to compare optional string arrays
+ * Rebuild task widgets in every Live Preview editor. Call when a task file or
+ * the plugin settings change.
  */
-function arraysEqual(a?: string[], b?: string[]): boolean {
-  if (a === b) return true;
-  if (!a || !b) return false;
-  if (a.length !== b.length) return false;
-  return a.every((val, i) => val === b[i]);
+export function refreshLivePreviewWidgets(): void {
+  for (const view of editorViews) {
+    view.dispatch({ effects: refreshWidgets.of(null) });
+  }
 }
 
 /**
  * CM6 Widget for rendering task links
  */
 class TaskLinkWidget extends WidgetType {
-  private clickTimeoutId: ReturnType<typeof setTimeout> | null = null;
+  private clickTimeoutId: number | null = null;
 
   constructor(
     private plugin: TaskdnPlugin,
     private file: TFile,
     private taskData: TaskData,
     private view: EditorView,
-    private isListItem: boolean = false
+    private isListItem: boolean,
+    private showDesktopButton: boolean
   ) {
     super();
   }
@@ -56,20 +69,25 @@ class TaskLinkWidget extends WidgetType {
       file: this.file,
       taskData: this.taskData,
       isListItem: this.isListItem,
+      showDesktopButton: this.showDesktopButton,
     });
 
     // Prevent CM6 from handling mouse events on the widget
     widget.addEventListener("mousedown", (e) => {
       if (this.clickTimeoutId !== null) {
-        clearTimeout(this.clickTimeoutId);
+        window.clearTimeout(this.clickTimeoutId);
       }
 
       widgetClickInProgress.add(this.view);
       e.stopPropagation();
 
-      this.clickTimeoutId = setTimeout(() => {
+      this.clickTimeoutId = window.setTimeout(() => {
         widgetClickInProgress.delete(this.view);
         this.clickTimeoutId = null;
+        // Catch up on any refresh that was skipped during the click
+        if (editorViews.has(this.view)) {
+          this.view.dispatch({ effects: refreshWidgets.of(null) });
+        }
       }, CLICK_TIMEOUT_MS);
     });
 
@@ -79,12 +97,9 @@ class TaskLinkWidget extends WidgetType {
   eq(other: TaskLinkWidget): boolean {
     return (
       this.file.path === other.file.path &&
-      this.taskData.status === other.taskData.status &&
-      this.taskData.title === other.taskData.title &&
-      this.taskData.due === other.taskData.due &&
-      this.taskData.area === other.taskData.area &&
       this.isListItem === other.isListItem &&
-      arraysEqual(this.taskData.projects, other.taskData.projects)
+      this.showDesktopButton === other.showDesktopButton &&
+      JSON.stringify(this.taskData) === JSON.stringify(other.taskData)
     );
   }
 
@@ -99,9 +114,6 @@ class TaskLinkWidget extends WidgetType {
 }
 
 /**
- * Build decorations for task wikilinks
- */
-/**
  * Collected decoration info for sorting before adding to builder
  */
 interface DecorationInfo {
@@ -110,6 +122,9 @@ interface DecorationInfo {
   decoration: Decoration;
 }
 
+/**
+ * Build decorations for task wikilinks in the visible ranges
+ */
 function buildDecorations(
   view: EditorView,
   plugin: TaskdnPlugin
@@ -145,17 +160,20 @@ function buildDecorations(
           const linkStart = findLinkStart(state, node.from);
           const linkEnd = findLinkEnd(state, node.to);
 
-          // Skip if cursor is inside (allows editing the raw wikilink)
-          if (cursorPos >= linkStart && cursorPos <= linkEnd) {
+          // Show the raw wikilink while the cursor is inside it, so it can be
+          // edited. A cursor just before or after it keeps the widget, so
+          // clicking beside a widget and pressing Enter works.
+          if (cursorPos > linkStart && cursorPos < linkEnd) {
             return;
           }
 
-          const fullText = state.sliceDoc(linkStart, linkEnd);
-          const linkMatch = fullText.match(/\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/);
-          if (!linkMatch) return;
+          const linkTarget = extractWikilinkTarget(
+            state.sliceDoc(linkStart, linkEnd)
+          );
+          if (!linkTarget) return;
 
           const taskFile = resolveTaskFile(
-            linkMatch[1],
+            linkTarget,
             sourcePath,
             plugin.app,
             plugin.settings.tasksDirectory
@@ -177,8 +195,7 @@ function buildDecorations(
           const cache = plugin.app.metadataCache.getFileCache(taskFile);
           const taskData = getTaskDataFromCache(taskFile, cache);
 
-          // Check if there's a list marker before the link
-          const { hasListMarker } = findListMarkerStart(state, linkStart);
+          const hasListMarker = hasListMarkerBefore(state, linkStart);
 
           // Only add line decoration for actual list items (not inline task links)
           // This makes the line behave like a native task line with proper checkbox alignment
@@ -191,7 +208,7 @@ function buildDecorations(
                 from: lineStart,
                 to: lineStart,
                 decoration: Decoration.line({
-                  class: "HyperMD-task-line",
+                  class: "HyperMD-task-line taskdn-task-line",
                   attributes: {
                     "data-task": getDataTaskValue(taskData.status),
                   },
@@ -211,7 +228,8 @@ function buildDecorations(
                 taskFile,
                 taskData,
                 view,
-                hasListMarker
+                hasListMarker,
+                plugin.settings.showDesktopAppButton
               ),
             }),
           });
@@ -242,31 +260,13 @@ function findLinkStart(state: EditorState, pos: number): number {
 }
 
 /**
- * Find if there's a list marker before the link and return its start position.
- * Returns the link start if no list marker found.
+ * Whether the link is the first thing after a bullet list marker ("- ", "* "
+ * or "+ ", optionally indented). Numbered lists don't count.
  */
-function findListMarkerStart(
-  state: EditorState,
-  linkStart: number
-): { start: number; hasListMarker: boolean } {
+function hasListMarkerBefore(state: EditorState, linkStart: number): boolean {
   const line = state.doc.lineAt(linkStart);
   const beforeLink = line.text.slice(0, linkStart - line.from);
-
-  // Match bullet list markers: "- ", "* ", "+ "
-  // Only bullet lists, not numbered lists (1., 2., etc.)
-  // The list marker should be at the start (after optional whitespace)
-  const listMarkerMatch = beforeLink.match(/^(\s*)([-*+])\s+$/);
-
-  if (listMarkerMatch) {
-    // Return position after leading whitespace but include the marker
-    const leadingWhitespace = listMarkerMatch[1].length;
-    return {
-      start: line.from + leadingWhitespace,
-      hasListMarker: true,
-    };
-  }
-
-  return { start: linkStart, hasListMarker: false };
+  return /^\s*[-*+]\s+$/.test(beforeLink);
 }
 
 function findLinkEnd(state: EditorState, pos: number): number {
@@ -282,12 +282,17 @@ function findLinkEnd(state: EditorState, pos: number): number {
 }
 
 export function taskLinkViewPlugin(plugin: TaskdnPlugin) {
-  return ViewPlugin.fromClass(
+  const viewPlugin = ViewPlugin.fromClass(
     class {
       decorations: DecorationSet;
 
-      constructor(view: EditorView) {
+      constructor(private view: EditorView) {
+        editorViews.add(view);
         this.decorations = buildDecorations(view, plugin);
+      }
+
+      destroy() {
+        editorViews.delete(this.view);
       }
 
       update(update: ViewUpdate) {
@@ -302,12 +307,16 @@ export function taskLinkViewPlugin(plugin: TaskdnPlugin) {
         );
         const isLivePreview = update.state.field(editorLivePreviewField, false);
         const modeChanged = wasLivePreview !== isLivePreview;
+        const refreshRequested = update.transactions.some((tr) =>
+          tr.effects.some((e) => e.is(refreshWidgets))
+        );
 
         if (
           update.docChanged ||
           update.viewportChanged ||
           update.selectionSet ||
-          modeChanged
+          modeChanged ||
+          refreshRequested
         ) {
           this.decorations = buildDecorations(update.view, plugin);
         }
@@ -316,5 +325,9 @@ export function taskLinkViewPlugin(plugin: TaskdnPlugin) {
     {
       decorations: (v) => v.decorations,
     }
-  );
+  ).extension;
+  // Obsidian hides the "[[" with its own replace decoration. When the two
+  // overlap, CM6 draws only the higher-precedence widget, so without this our
+  // widget can vanish (e.g. after a refresh or a plugin reload).
+  return Prec.highest(viewPlugin);
 }

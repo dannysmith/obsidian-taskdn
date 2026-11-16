@@ -171,8 +171,7 @@
 }
 
 /* Task list item: align checkbox to top when content wraps */
-/* Use direct child selector to avoid matching parent items in nested lists */
-.markdown-preview-view li.task-list-item:has(> .taskdn-widget) {
+.markdown-preview-view li.taskdn-task-item {
   display: flex;
   align-items: flex-start;
   gap: 0.35em;
@@ -200,7 +199,7 @@
 }
 
 /* When no metadata, simplify grid */
-.markdown-preview-view li .taskdn-widget:not(:has(.taskdn-meta)) {
+.markdown-preview-view li .taskdn-widget.taskdn-no-meta {
   grid-template-columns: auto auto;
   grid-template-areas: "title btn";
 }
@@ -242,16 +241,17 @@
    ============================================ */
 
 /* Force same indent as native task lines (CodeMirror calculates 23px for list items,
-   but native tasks get 30px - we need to match native tasks) */
+   but native tasks get 30px - we need to match native tasks). Obsidian sets the
+   indent as an inline style, so only !important can override it. */
 /* Also make this a container for container queries */
-.cm-line:has(.taskdn-widget-wrapper) {
+.cm-line.taskdn-task-line {
   text-indent: -30px !important;
   padding-inline-start: 30px !important;
   container-type: inline-size;
 }
 
 /* Hide the entire list formatting span (contains the bullet) */
-.cm-line:has(.taskdn-widget-wrapper) .cm-formatting-list {
+.cm-line.taskdn-task-line .cm-formatting-list {
   display: none;
 }
 
@@ -299,7 +299,7 @@
 }
 
 /* When no metadata present, simplify grid to just title + button */
-.taskdn-widget-wrapper .taskdn-widget:not(:has(.taskdn-meta)) {
+.taskdn-widget-wrapper .taskdn-widget.taskdn-no-meta {
   grid-template-columns: auto auto;
   grid-template-areas: "title btn";
 }
@@ -345,9 +345,8 @@
   opacity: 0.7;
 }
 
-/* Desktop app button - hidden by default */
+/* Desktop app button (only rendered when the setting is on) */
 .taskdn-desktop-btn {
-  display: none;
   cursor: pointer;
   font-size: 0.75em;
   opacity: 0.4;
@@ -357,11 +356,6 @@
 .taskdn-desktop-btn:hover {
   opacity: 1;
   color: var(--text-accent);
-}
-
-/* Show button when setting enabled */
-body.taskdn-show-desktop-btn .taskdn-desktop-btn {
-  display: inline;
 }
 
 /* ============================================
@@ -378,7 +372,7 @@ body.taskdn-show-desktop-btn .taskdn-desktop-btn {
 }
 
 .workspace-leaf-content.taskdn-task-view[data-taskdn-status="ready"] {
-  border-inline-start: 2px solid var(--color-green);
+  border-inline-start: 2px solid var(--text-faint);
 }
 
 .workspace-leaf-content.taskdn-task-view[data-taskdn-status="in-progress"] {
@@ -396,4 +390,3 @@ body.taskdn-show-desktop-btn .taskdn-desktop-btn {
 .workspace-leaf-content.taskdn-task-view[data-taskdn-status="done"] {
   border-inline-start: 2px solid var(--color-green);
 }
-

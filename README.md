@@ -25,8 +25,6 @@ You can also right-click any checklist item (`- [ ] Do something`) to convert it
 
 When Obsidian's "Show inline title" setting is enabled, you can optionally have task files display their human-readable `title` frontmatter instead of the filename.
 
-<img width="615" height="209" alt="Inline title replacement showing task title instead of filename" src="https://github.com/user-attachments/assets/placeholder-inline-title.png" />
-
 **How it works:**
 
 - Enable "Use task title as inline title" in the plugin settings
@@ -40,14 +38,17 @@ This only applies to valid Taskdn task files—documents in your tasks directory
 
 ## Prerequisites
 
-1. WikiLinks must be enabled (Settings → Files & Links → "Use [[Wikilinks]]")
-2. You need a tasks folder with files following the [Taskdn spec](https://github.com/dannysmith/taskdn/blob/main/tdn-specs/S1-core.md)
+1. Obsidian 1.13 or later
+2. WikiLinks must be enabled (Settings → Files & Links → "Use [[Wikilinks]]")
+3. You need a tasks folder with files following the [Taskdn spec](https://github.com/dannysmith/taskdn/blob/main/tdn-specs/S1-core.md)
 
 ## Installation
 
-1. Settings → Community Plugins
+1. Settings → Community plugins → Browse
 2. Search for "Taskdn"
 3. Install and enable
+
+To install manually, download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/dannysmith/obsidian-taskdn/releases/latest) into `.obsidian/plugins/taskdn/` in your vault, then enable Taskdn in Settings → Community plugins.
 
 ## Configuration
 
@@ -73,17 +74,20 @@ Works in both Live Preview and Reading Mode.
 
 ## Development
 
+Requires [Bun](https://bun.com) 1.4.4 or later.
+
 ```bash
 git clone https://github.com/dannysmith/obsidian-taskdn.git
 cd obsidian-taskdn
-bun install
-bun run dev      # Watch mode
-bun run build    # Production build
-bun run check    # Type check + lint
-bun run fix      # Auto-fix lint/format
+bun install          # Also enables a pre-commit hook that runs `bun run check`
+bun run dev          # Watch build
+bun run build        # Production build
+bun run check        # Types, Obsidian's lint rules, formatting and tests
+bun run fix          # Auto-fix lint and formatting
+bun run test-vault   # Create or reset a test vault in test-vault/
 ```
 
-To test, copy `main.js`, `manifest.json`, and `styles.css` to `.obsidian/plugins/taskdn/` in your vault.
+To try your changes, open `test-vault/` as a vault in Obsidian. The build is symlinked into it, so reload the plugin after each build. See [AGENTS.md](AGENTS.md) for architecture notes.
 
 ## License
 

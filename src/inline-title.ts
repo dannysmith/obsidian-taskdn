@@ -11,6 +11,9 @@ const TASK_VIEW_CLASS = "taskdn-task-view";
 /** Track which elements are currently being edited to avoid interrupting user */
 const editingElements = new WeakSet<HTMLElement>();
 
+/** Inline title elements we've already attached our event handlers to */
+const interceptedTitles = new WeakSet<HTMLElement>();
+
 /**
  * Set up inline title replacement for task files.
  * When viewing a valid task file with the feature enabled, displays the
@@ -22,13 +25,13 @@ export function setupInlineTitleReplacement(plugin: TaskdnPlugin): void {
   // Process all views on layout change and leaf change
   plugin.registerEvent(
     workspace.on("active-leaf-change", () => {
-      processAllViews(plugin);
+      refreshInlineTitles(plugin);
     })
   );
 
   plugin.registerEvent(
     workspace.on("layout-change", () => {
-      processAllViews(plugin);
+      refreshInlineTitles(plugin);
     })
   );
 
@@ -42,13 +45,20 @@ export function setupInlineTitleReplacement(plugin: TaskdnPlugin): void {
   );
 
   // Initial processing
-  processAllViews(plugin);
+  refreshInlineTitles(plugin);
+
+  // Give every title back to Obsidian when the plugin unloads
+  plugin.register(() => {
+    workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view instanceof MarkdownView) releaseView(leaf.view);
+    });
+  });
 }
 
 /**
- * Process all open MarkdownViews
+ * Apply (or remove) task title replacement in all open MarkdownViews.
  */
-function processAllViews(plugin: TaskdnPlugin): void {
+export function refreshInlineTitles(plugin: TaskdnPlugin): void {
   plugin.app.workspace.iterateAllLeaves((leaf) => {
     const view = leaf.view;
     if (view instanceof MarkdownView) {
@@ -70,6 +80,22 @@ function updateViewsForFile(plugin: TaskdnPlugin, file: TFile): void {
 }
 
 /**
+ * Hand a view's inline title back to Obsidian (showing the filename) and
+ * remove the task status border.
+ */
+function releaseView(view: MarkdownView): void {
+  const leafContent = view.containerEl.closest(".workspace-leaf-content");
+  leafContent?.removeClass(TASK_VIEW_CLASS);
+  leafContent?.removeAttribute("data-taskdn-status");
+
+  const titleEl = view.containerEl.querySelector<HTMLElement>(".inline-title");
+  if (titleEl?.dataset.filePath) {
+    delete titleEl.dataset.filePath; // Our handlers do nothing without it
+    if (view.file) titleEl.textContent = view.file.basename;
+  }
+}
+
+/**
  * Process a single MarkdownView for task title replacement
  */
 function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
@@ -85,45 +111,30 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
     return;
   }
 
-  // Remove task view class and status by default
-  leafContent?.classList.remove(TASK_VIEW_CLASS);
-  leafContent?.removeAttribute("data-taskdn-status");
-
-  // Early exit if feature disabled or no file
-  if (!plugin.settings.useTaskTitleAsInlineTitle || !file) {
-    if (nativeTitleEl) {
-      delete nativeTitleEl.dataset.taskdnSetup;
-      delete nativeTitleEl.dataset.filePath;
-    }
-    return;
-  }
-
-  // Check if this is a valid task file
-  if (!isValidTaskFile(file, plugin.app, plugin.settings)) {
-    if (nativeTitleEl) {
-      delete nativeTitleEl.dataset.taskdnSetup;
-      delete nativeTitleEl.dataset.filePath;
-    }
+  if (
+    !plugin.settings.useTaskTitleAsInlineTitle ||
+    !file ||
+    !nativeTitleEl ||
+    !isValidTaskFile(file, plugin.app, plugin.settings)
+  ) {
+    releaseView(view);
     return;
   }
 
   // Get the title and status from frontmatter
   const cache = plugin.app.metadataCache.getFileCache(file);
   const fm = cache?.frontmatter as
-    | { title?: string; status?: string }
-    | undefined;
+    { title?: string; status?: string } | undefined;
   const title = typeof fm?.title === "string" ? fm.title : "";
   const status = typeof fm?.status === "string" ? fm.status : "inbox";
 
-  if (!nativeTitleEl) return;
-
-  // Set up our event handlers on the native element (if not already done)
-  if (!nativeTitleEl.dataset.taskdnSetup) {
+  // Set up our event handlers on the native element (once per element)
+  if (!interceptedTitles.has(nativeTitleEl)) {
     setupNativeTitleInterception(plugin, nativeTitleEl);
-    nativeTitleEl.dataset.taskdnSetup = "true";
+    interceptedTitles.add(nativeTitleEl);
   }
 
-  // Update the file path in case the view is showing a different file
+  // Marks the title as ours; the handlers do nothing without it
   nativeTitleEl.dataset.filePath = file.path;
 
   // Update the title content (only if not editing)
@@ -159,19 +170,21 @@ function setupNativeTitleInterception(
   el.addEventListener(
     "blur",
     (e) => {
-      const newValue = el.textContent ?? "";
+      editingElements.delete(el);
       const path = el.dataset.filePath;
+      if (!path) return;
 
-      if (newValue !== originalValue && path) {
-        // Stop Obsidian from handling this blur (which would rename the file)
-        e.stopPropagation();
-        e.preventDefault();
+      // Always stop Obsidian handling the blur on a task: it renames the file
+      // whenever the title text differs from the filename, which it always
+      // does here, even when nothing was edited
+      e.stopPropagation();
+      e.preventDefault();
 
+      const newValue = el.textContent ?? "";
+      if (newValue !== originalValue) {
         // Save to frontmatter instead
         void saveTitle(plugin, path, newValue);
       }
-
-      editingElements.delete(el);
     },
     true
   );
@@ -179,6 +192,7 @@ function setupNativeTitleInterception(
   el.addEventListener(
     "keydown",
     (e) => {
+      if (!el.dataset.filePath) return;
       if (e.key === "Enter") {
         e.preventDefault();
         e.stopPropagation();

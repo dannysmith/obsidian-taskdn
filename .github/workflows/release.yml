@@ -7,35 +7,39 @@ on:
 
 permissions:
   contents: write
+  id-token: write # For the build attestation
+  attestations: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2
         with:
-          bun-version: latest
+          bun-version: 1.4.4 # Keep in sync with check.yml
 
-      - name: Install dependencies
-        run: bun install
+      - run: bun install --frozen-lockfile
+      - run: bun run check
+      - run: bun run build
 
-      - name: Build
-        run: bun run build
+      # Proves the release files were built by this workflow. The Obsidian
+      # community directory checks for it.
+      - name: Attest build provenance
+        uses: actions/attest@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
 
-      - name: Create plugin zip
-        run: zip -j obsidian-taskdn.zip main.js manifest.json styles.css
-
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
+      # Obsidian only downloads these three files; it warns about anything else
+      - name: Create release
+        uses: softprops/action-gh-release@v3
         with:
           files: |
             main.js
             manifest.json
             styles.css
-            obsidian-taskdn.zip
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -1,123 +1,125 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+import {
+  App,
+  PluginSettingTab,
+  SettingDefinitionItem,
+  debounce,
+  normalizePath,
+} from "obsidian";
 import type TaskdnPlugin from "./main";
-import { isValidStatus } from "./utils/task-utils";
+import { TaskdnSettings } from "./types";
 
+type SettingKey = keyof TaskdnSettings;
+
+/**
+ * Settings tab, defined declaratively so Obsidian can render it and include
+ * it in settings search.
+ */
 export class TaskdnSettingTab extends PluginSettingTab {
   plugin: TaskdnPlugin;
+
+  /** Debounced because text settings change on every keystroke */
+  private applySettings = debounce(
+    () => this.plugin.applySettings(),
+    300,
+    true
+  );
 
   constructor(app: App, plugin: TaskdnPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+    this.icon = "check-square"; // Shown next to the tab in the settings sidebar
   }
 
-  display(): void {
-    const { containerEl } = this;
-    containerEl.empty();
-
-    new Setting(containerEl)
-      .setName("Tasks directory")
-      .setDesc("Path to the folder containing task files (e.g., 'tasks')")
-      .addText((text) =>
-        text
-          .setPlaceholder("Tasks")
-          .setValue(this.plugin.settings.tasksDirectory)
-          .onChange(async (value) => {
-            this.plugin.settings.tasksDirectory = value || "tasks";
-            await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("Default status for new tasks")
-      .setDesc("Status assigned to tasks created from checklist items")
-      .addDropdown((dropdown) =>
-        dropdown
-          .addOption("inbox", "Inbox")
-          .addOption("ready", "Ready")
-          .addOption("icebox", "Icebox")
-          .setValue(this.plugin.settings.defaultStatus)
-          .onChange(async (value) => {
-            if (isValidStatus(value)) {
-              this.plugin.settings.defaultStatus = value;
-              await this.plugin.saveSettings();
-            }
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("Show desktop app button")
-      .setDesc("Show a button on tasks to open them in the taskdn desktop app")
-      .addToggle((toggle) =>
-        toggle
-          .setValue(this.plugin.settings.showDesktopAppButton)
-          .onChange(async (value) => {
-            this.plugin.settings.showDesktopAppButton = value;
-            await this.plugin.saveSettings();
-            this.plugin.updateDesktopButtonClasses();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName("Ignored files")
-      .setDesc(
-        "Task files to exclude from widget rendering (one pattern per line). " +
+  getSettingDefinitions(): SettingDefinitionItem<SettingKey>[] {
+    return [
+      {
+        name: "Tasks directory",
+        desc: "Folder containing your task files",
+        control: {
+          type: "folder",
+          key: "tasksDirectory",
+          placeholder: "tasks",
+        },
+      },
+      {
+        name: "Default status for new tasks",
+        desc: "Status assigned to tasks created from checklist items",
+        control: {
+          type: "dropdown",
+          key: "defaultStatus",
+          options: { inbox: "Inbox", ready: "Ready", icebox: "Icebox" },
+        },
+      },
+      {
+        name: "Show desktop app button",
+        desc: "Show a button on tasks to open them in the Taskdn desktop app",
+        control: { type: "toggle", key: "showDesktopAppButton" },
+      },
+      {
+        name: "Ignored files",
+        desc:
+          "Task files to exclude from widget rendering (one pattern per line). " +
           "Paths are relative to the tasks directory. Use * as wildcard. " +
-          "Example: archive/* or *-template"
-      )
-      .addTextArea((text) =>
-        text
-          .setPlaceholder("Files to ignore\narchive/*\n*-template")
-          .setValue(this.plugin.settings.ignoredFiles.join("\n"))
-          .onChange(async (value) => {
-            this.plugin.settings.ignoredFiles = value
-              .split("\n")
-              .map((line) => line.trim())
-              .filter((line) => line.length > 0);
-            await this.plugin.saveSettings();
-          })
-      );
+          "Example: archive/* or *-template",
+        control: {
+          type: "textarea",
+          key: "ignoredFiles",
+          placeholder: "archive/*\n*-template",
+        },
+      },
+      {
+        name: "Use task title as inline title",
+        desc:
+          'Show the task\'s human-readable title (e.g., "Buy groceries") instead of ' +
+          'the filename (e.g., "buy-groceries") at the top of task files. ' +
+          "Edits update the title property, not the filename.",
+        visible: () => this.showInlineTitle(),
+        control: { type: "toggle", key: "useTaskTitleAsInlineTitle" },
+      },
+      {
+        name: "Sync filename with task title",
+        desc:
+          "When you edit the inline title, also rename the file to match (in kebab-case). " +
+          "Links to the file will be updated automatically by Obsidian.",
+        visible: () =>
+          this.showInlineTitle() &&
+          this.plugin.settings.useTaskTitleAsInlineTitle,
+        control: { type: "toggle", key: "syncFilenameWithTaskTitle" },
+      },
+    ];
+  }
 
-    // Access Obsidian's internal config to check if "Show inline title" is enabled
-    // This setting isn't part of the public API, so we use a type assertion
-    const vaultWithConfig = this.app.vault as unknown as {
+  getControlValue(key: string): unknown {
+    // Stored as a list, edited as one pattern per line
+    if (key === "ignoredFiles") {
+      return this.plugin.settings.ignoredFiles.join("\n");
+    }
+    return super.getControlValue(key);
+  }
+
+  async setControlValue(key: string, value: unknown): Promise<void> {
+    if (key === "ignoredFiles" && typeof value === "string") {
+      value = value
+        .split("\n")
+        .map((line) => line.trim())
+        .filter((line) => line.length > 0);
+    } else if (key === "tasksDirectory" && typeof value === "string") {
+      value = value.trim() ? normalizePath(value) : "tasks";
+    }
+    await super.setControlValue(key, value);
+
+    this.refreshDomState(); // Dependent settings may need showing or hiding
+    this.applySettings();
+  }
+
+  /**
+   * Whether Obsidian's "Show inline title" setting is on. It isn't part of the
+   * public API, so read it from the vault config defensively.
+   */
+  private showInlineTitle(): boolean {
+    const vault = this.app.vault as unknown as {
       config?: { showInlineTitle?: boolean };
     };
-    const showInlineTitle = vaultWithConfig.config?.showInlineTitle ?? true;
-
-    if (showInlineTitle) {
-      new Setting(containerEl)
-        .setName("Use task title as inline title")
-        .setDesc(
-          'Show the task\'s human-readable title (e.g., "Buy groceries") instead of ' +
-            'the filename (e.g., "buy-groceries") at the top of task files. ' +
-            "Edits update the title property, not the filename."
-        )
-        .addToggle((toggle) =>
-          toggle
-            .setValue(this.plugin.settings.useTaskTitleAsInlineTitle)
-            .onChange(async (value) => {
-              this.plugin.settings.useTaskTitleAsInlineTitle = value;
-              await this.plugin.saveSettings();
-              this.display(); // Re-render to show/hide dependent setting
-            })
-        );
-
-      if (this.plugin.settings.useTaskTitleAsInlineTitle) {
-        new Setting(containerEl)
-          .setName("Sync filename with task title")
-          .setDesc(
-            "When you edit the inline title, also rename the file to match (in kebab-case). " +
-              "Links to the file will be updated automatically by Obsidian."
-          )
-          .addToggle((toggle) =>
-            toggle
-              .setValue(this.plugin.settings.syncFilenameWithTaskTitle)
-              .onChange(async (value) => {
-                this.plugin.settings.syncFilenameWithTaskTitle = value;
-                await this.plugin.saveSettings();
-              })
-          );
-      }
-    }
+    return vault.config?.showInlineTitle ?? true;
   }
 }
