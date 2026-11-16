@@ -3,6 +3,7 @@ import {
   PluginSettingTab,
   SettingDefinitionItem,
   debounce,
+  normalizePath,
 } from "obsidian";
 import type TaskdnPlugin from "./main";
 import { TaskdnSettings } from "./types";
@@ -50,7 +51,7 @@ export class TaskdnSettingTab extends PluginSettingTab {
       },
       {
         name: "Show desktop app button",
-        desc: "Show a button on tasks to open them in the taskdn desktop app",
+        desc: "Show a button on tasks to open them in the Taskdn desktop app",
         control: { type: "toggle", key: "showDesktopAppButton" },
       },
       {
@@ -101,8 +102,8 @@ export class TaskdnSettingTab extends PluginSettingTab {
         .split("\n")
         .map((line) => line.trim())
         .filter((line) => line.length > 0);
-    } else if (key === "tasksDirectory" && value === "") {
-      value = "tasks";
+    } else if (key === "tasksDirectory" && typeof value === "string") {
+      value = value.trim() ? normalizePath(value) : "tasks";
     }
     await super.setControlValue(key, value);
 

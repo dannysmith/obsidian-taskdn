@@ -99,7 +99,7 @@ class ReadingTaskWidget extends MarkdownRenderChild {
     if (this.listItem && checkbox) {
       // Match native task list items:
       // <li class="task-list-item"><input class="task-list-item-checkbox">text</li>
-      this.listItem.addClass("task-list-item");
+      this.listItem.addClasses(["task-list-item", "taskdn-task-item"]);
       this.listItem.dataset.task = getDataTaskValue(taskData.status);
       widget.removeClass("taskdn-inline");
       checkbox.addClass("task-list-item-checkbox");

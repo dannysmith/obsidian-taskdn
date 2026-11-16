@@ -25,9 +25,6 @@ jobs:
       - run: bun run check
       - run: bun run build
 
-      - name: Create plugin zip
-        run: zip -j obsidian-taskdn.zip main.js manifest.json styles.css
-
       # Proves the release files were built by this workflow. The Obsidian
       # community directory checks for it.
       - name: Attest build provenance
@@ -35,8 +32,10 @@ jobs:
         with:
           subject-path: |
             main.js
+            manifest.json
             styles.css
 
+      # Obsidian only downloads these three files; it warns about anything else
       - name: Create release
         uses: softprops/action-gh-release@v3
         with:
@@ -44,4 +43,3 @@ jobs:
             main.js
             manifest.json
             styles.css
-            obsidian-taskdn.zip

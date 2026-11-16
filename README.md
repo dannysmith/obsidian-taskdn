@@ -44,19 +44,11 @@ This only applies to valid Taskdn task files—documents in your tasks directory
 
 ## Installation
 
-Taskdn isn't in Obsidian's community plugin directory yet. Until it is, install it with [BRAT](https://github.com/TfTHacker/obsidian42-brat) or manually.
+1. Settings → Community plugins → Browse
+2. Search for "Taskdn"
+3. Install and enable
 
-**With BRAT** (gets updates automatically):
-
-1. Install and enable the BRAT plugin from Settings → Community plugins
-2. Run the command "BRAT: Add a beta plugin for testing" and enter `dannysmith/obsidian-taskdn`
-3. Enable Taskdn in Settings → Community plugins
-
-**Manually:**
-
-1. Download `obsidian-taskdn.zip` from the [latest release](https://github.com/dannysmith/obsidian-taskdn/releases/latest)
-2. Unzip it into `.obsidian/plugins/taskdn/` in your vault
-3. Reload Obsidian and enable Taskdn in Settings → Community plugins
+To install manually, download `main.js`, `manifest.json` and `styles.css` from the [latest release](https://github.com/dannysmith/obsidian-taskdn/releases/latest) into `.obsidian/plugins/taskdn/` in your vault, then enable Taskdn in Settings → Community plugins.
 
 ## Configuration
 

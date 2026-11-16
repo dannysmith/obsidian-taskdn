@@ -58,7 +58,9 @@ obsidian vault=test-vault dev:mobile on      # Mobile emulation
 
 Run `bun run release`. It runs the checks, bumps the version in `package.json`, `manifest.json` and `versions.json`, then commits, tags and pushes. GitHub Actions builds and publishes the release.
 
-The Obsidian community directory reviews every release: it lints the source with `eslint-plugin-obsidianmd` (our ESLint config uses the same rules) and runs `bun run build` to check the published `main.js` matches the source.
+The Obsidian community directory reviews every release: manifest, release assets, CSS, dependencies, source (`eslint-plugin-obsidianmd`, which our ESLint config also runs) and a rebuild with `bun run build` to check the published `main.js` matches the source. Releases must only contain `main.js`, `manifest.json` and `styles.css`.
+
+**Before merging a feature branch, remind Danny to run "Review branch"** on the plugin's page at [community.obsidian.md](https://community.obsidian.md) (Your entries → Taskdn) against the branch. It previews the full review, including CSS and dependency checks that `bun run check` doesn't cover. Known warnings we accept: `text-indent` "partial support" and `!important` in `styles.css` (needed to override Obsidian's inline indent), and minimatch advisories from ESLint's dependencies (dev only).
 
 ## Task Frontmatter Reference
 

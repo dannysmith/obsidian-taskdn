@@ -46,6 +46,13 @@ export function setupInlineTitleReplacement(plugin: TaskdnPlugin): void {
 
   // Initial processing
   refreshInlineTitles(plugin);
+
+  // Give every title back to Obsidian when the plugin unloads
+  plugin.register(() => {
+    workspace.iterateAllLeaves((leaf) => {
+      if (leaf.view instanceof MarkdownView) releaseView(leaf.view);
+    });
+  });
 }
 
 /**
@@ -73,6 +80,22 @@ function updateViewsForFile(plugin: TaskdnPlugin, file: TFile): void {
 }
 
 /**
+ * Hand a view's inline title back to Obsidian (showing the filename) and
+ * remove the task status border.
+ */
+function releaseView(view: MarkdownView): void {
+  const leafContent = view.containerEl.closest(".workspace-leaf-content");
+  leafContent?.removeClass(TASK_VIEW_CLASS);
+  leafContent?.removeAttribute("data-taskdn-status");
+
+  const titleEl = view.containerEl.querySelector<HTMLElement>(".inline-title");
+  if (titleEl?.dataset.filePath) {
+    delete titleEl.dataset.filePath; // Our handlers do nothing without it
+    if (view.file) titleEl.textContent = view.file.basename;
+  }
+}
+
+/**
  * Process a single MarkdownView for task title replacement
  */
 function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
@@ -88,20 +111,13 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
     return;
   }
 
-  // Remove task view class and status by default
-  leafContent?.classList.remove(TASK_VIEW_CLASS);
-  leafContent?.removeAttribute("data-taskdn-status");
-
-  // Hand the title back to Obsidian if the feature is off or this isn't a task
   if (
     !plugin.settings.useTaskTitleAsInlineTitle ||
     !file ||
+    !nativeTitleEl ||
     !isValidTaskFile(file, plugin.app, plugin.settings)
   ) {
-    if (nativeTitleEl?.dataset.filePath) {
-      delete nativeTitleEl.dataset.filePath;
-      if (file) nativeTitleEl.textContent = file.basename;
-    }
+    releaseView(view);
     return;
   }
 
@@ -111,8 +127,6 @@ function processView(plugin: TaskdnPlugin, view: MarkdownView): void {
     { title?: string; status?: string } | undefined;
   const title = typeof fm?.title === "string" ? fm.title : "";
   const status = typeof fm?.status === "string" ? fm.status : "inbox";
-
-  if (!nativeTitleEl) return;
 
   // Set up our event handlers on the native element (once per element)
   if (!interceptedTitles.has(nativeTitleEl)) {

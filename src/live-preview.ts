@@ -208,7 +208,7 @@ function buildDecorations(
                 from: lineStart,
                 to: lineStart,
                 decoration: Decoration.line({
-                  class: "HyperMD-task-line",
+                  class: "HyperMD-task-line taskdn-task-line",
                   attributes: {
                     "data-task": getDataTaskValue(taskData.status),
                   },

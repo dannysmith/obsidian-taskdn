@@ -52,7 +52,7 @@ A popout is a note in its own separate window.
 - [ ] **D1. Open a popout.** Right-click the "Widgets" tab at the top of the editor and choose **Move to new window**. Widgets opens in a new window and the widgets look normal there.
 - [ ] **D2. Tick in the popout.** In the popout, tick and untick "Learn the cello". It behaves like A1 and A2.
 - [ ] **D3. Desktop button and menu.** In the popout, hover over a ↗ and click it. Then right-click a widget's title.
-  - The ↗ click and the menu item "Open in taskdn desktop app" both try to open the Taskdn desktop app. If you don't have it installed, just report whether anything happens.
+  - The ↗ click and the menu item "Open in Taskdn desktop app" both try to open the Taskdn desktop app. If you don't have it installed, just report whether anything happens.
   - The right-click menu shows only that one item.
 - [ ] **D4. Updates reach the popout.** In the main window, open `tasks/icebox-task.md` and change `status` from `icebox` to `blocked` in its properties. In the popout, "Learn the cello" gets a red border within a second.
 

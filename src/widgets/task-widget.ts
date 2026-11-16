@@ -110,6 +110,8 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
 
   if (meta.hasChildNodes()) {
     content.appendChild(meta);
+  } else {
+    content.addClass("taskdn-no-meta");
   }
 
   if (showDesktopButton && Platform.isDesktopApp) {
@@ -134,7 +136,7 @@ export function createTaskWidget(options: TaskWidgetOptions): HTMLElement {
       new Menu()
         .addItem((item) =>
           item
-            .setTitle("Open in taskdn desktop app")
+            .setTitle("Open in Taskdn desktop app")
             .setIcon("arrow-up-right")
             .onClick(() => openInDesktopApp(app, file.path))
         )
