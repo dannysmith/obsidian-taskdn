@@ -27,6 +27,7 @@ export class TaskdnSettingTab extends PluginSettingTab {
   constructor(app: App, plugin: TaskdnPlugin) {
     super(app, plugin);
     this.plugin = plugin;
+    this.icon = "check-square"; // Shown next to the tab in the settings sidebar
   }
 
   getSettingDefinitions(): SettingDefinitionItem<SettingKey>[] {
