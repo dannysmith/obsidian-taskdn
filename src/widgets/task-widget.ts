@@ -230,5 +230,5 @@ function openInDesktopApp(app: App, filePath: string): void {
   const adapter = app.vault.adapter;
   if (!(adapter instanceof FileSystemAdapter)) return;
   const absolutePath = adapter.getFullPath(filePath);
-  window.open(`taskdn://open?path=${encodeURIComponent(absolutePath)}`);
+  activeWindow.open(`taskdn://open?path=${encodeURIComponent(absolutePath)}`);
 }

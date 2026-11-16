@@ -82,7 +82,7 @@ Works in both Live Preview and Reading Mode.
 
 ## Development
 
-Requires [Bun](https://bun.com).
+Requires [Bun](https://bun.com) 1.4.4 or later.
 
 ```bash
 git clone https://github.com/dannysmith/obsidian-taskdn.git

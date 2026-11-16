@@ -106,9 +106,17 @@ class ReadingTaskWidget extends MarkdownRenderChild {
       newNodes = [checkbox, widget];
     }
 
+    // Removing a focused checkbox loses keyboard focus, so move it to the new one
+    const focused = this.containerEl.doc.activeElement;
+    const refocus =
+      focused?.hasClass("taskdn-checkbox") &&
+      this.nodes.some((node) => node.contains(focused));
+
     this.nodes[0]?.before(...newNodes);
     this.nodes.forEach((node) => node.remove());
     this.nodes = newNodes;
+
+    if (refocus) checkbox?.focus({ preventScroll: true });
   }
 }
 
