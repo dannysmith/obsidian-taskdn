@@ -114,9 +114,6 @@ class TaskLinkWidget extends WidgetType {
 }
 
 /**
- * Build decorations for task wikilinks
- */
-/**
  * Collected decoration info for sorting before adding to builder
  */
 interface DecorationInfo {
@@ -125,6 +122,9 @@ interface DecorationInfo {
   decoration: Decoration;
 }
 
+/**
+ * Build decorations for task wikilinks in the visible ranges
+ */
 function buildDecorations(
   view: EditorView,
   plugin: TaskdnPlugin
